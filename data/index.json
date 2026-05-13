@@ -1,0 +1,1223 @@
+{
+    "document": {
+        "title": "معايير المحاسبة المصرية",
+        "total_pages": 208,
+        "language": "ar"
+    },
+    "sections": [
+        {
+            "title": "الصفحات التمهيدية",
+            "id": "section_1",
+            "start_page": 1,
+            "end_page": 7,
+            "hook": null
+        },
+        {
+            "title": "المقدمة",
+            "id": "section_2",
+            "hook": null,
+            "children": [
+                {
+                    "title": "مقدمة",
+                    "id": "section_2_1",
+                    "start_page": 8,
+                    "end_page": 9,
+                    "hook": null
+                },
+                {
+                    "title": "تمهيد",
+                    "id": "section_2_2",
+                    "start_page": 10,
+                    "end_page": 10,
+                    "hook": null
+                },
+                {
+                    "title": "ملحق التمهيد",
+                    "id": "section_2_3",
+                    "start_page": 11,
+                    "end_page": 13,
+                    "hook": null
+                }
+            ]
+        },
+        {
+            "title": "إطار إعداد وعرض القوائم المالية",
+            "id": "section_3",
+            "hook": null,
+            "children": [
+                {
+                    "title": "فهرس ومقدمة",
+                    "id": "section_3_1",
+                    "start_page": 14,
+                    "end_page": 17,
+                    "hook": null
+                },
+                {
+                    "title": "الجزء (1) الهدف من القوائم المالية ذات الأغراض العامة",
+                    "id": "section_3_2",
+                    "children": [
+                        {
+                            "title": "فهرس ومقدمة",
+                            "id": "section_3_2_1",
+                            "start_page": 18,
+                            "end_page": 19,
+                            "hook": null
+                        },
+                        {
+                            "title": "الهدف والفائدة ومحددات القوائم المالية ذات الأغراض العامة",
+                            "id": "section_3_2_2",
+                            "start_page": 19,
+                            "end_page": 21,
+                            "hook": null
+                        },
+                        {
+                            "title": "المعلومات حول الموارد الاقتصادية للمنشأة المصدرة للقوائم المالية، والمطالبات على المنشأة والتغيرات في الموارد والمطالبات",
+                            "id": "section_3_2_3",
+                            "start_page": 21,
+                            "end_page": 21,
+                            "hook": null
+                        },
+                        {
+                            "title": "الموارد الاقتصادية والمطالبات",
+                            "id": "section_3_2_4",
+                            "start_page": 22,
+                            "end_page": 22,
+                            "hook": null
+                        },
+                        {
+                            "title": "التغيرات في الموارد الاقتصادية والمطالبات",
+                            "id": "section_3_2_5",
+                            "start_page": 22,
+                            "end_page": 23,
+                            "hook": null
+                        },
+                        {
+                            "title": "الأداء المالي الذي تعكسه المحاسبة على أساس الاستحقاق",
+                            "id": "section_3_2_6",
+                            "start_page": 23,
+                            "end_page": 23,
+                            "hook": null
+                        },
+                        {
+                            "title": "الأداء المالي الذي تعكسه التدفقات النقدية الخارجية",
+                            "id": "section_3_2_7",
+                            "start_page": 24,
+                            "end_page": 24,
+                            "hook": null
+                        },
+                        {
+                            "title": "التغيرات في الموارد الاقنصادية والمطالبات التي لا تنتج عن أداء مالي",
+                            "id": "section_3_2_8",
+                            "start_page": 24,
+                            "end_page": 24,
+                            "hook": null
+                        }
+                    ]
+                },
+                {
+                    "title": "الجزء (2) المنشأة المصدرة للقوائم المالية",
+                    "id": "section_3_3",
+                    "children": [
+                        {
+                            "title": "فهرس ومقدمة",
+                            "id": "section_3_3_1",
+                            "start_page": 25,
+                            "end_page": 26,
+                            "hook": null
+                        },
+                        {
+                            "title": "التوصيف",
+                            "id": "section_3_3_2",
+                            "start_page": 26,
+                            "end_page": 27,
+                            "hook": null
+                        },
+                        {
+                            "title": "القوائم المالية المجمعة",
+                            "id": "section_3_3_3",
+                            "start_page": 27,
+                            "end_page": 27,
+                            "hook": null
+                        },
+                        {
+                            "title": "أنواع أخرى من القوائم المالية",
+                            "id": "section_3_3_4",
+                            "hook": null,
+                            "start_page": 28,
+                            "end_page": 28
+                        }
+                    ]
+                },
+                {
+                    "title": "الجزء (3) الخصائص النوعية للمعلومات المفيدة",
+                    "id": "section_3_4",
+                    "children": [
+                        {
+                            "title": "فهرس ومقدمة",
+                            "id": "section_3_4_1",
+                            "start_page": 29,
+                            "end_page": 30,
+                            "hook": null
+                        },
+                        {
+                            "title": "الخصائص النوعية للمعلومات المالية المفيدة",
+                            "id": "section_3_4_2",
+                            "start_page": 30,
+                            "end_page": 30,
+                            "hook": null
+                        },
+                        {
+                            "title": "الخصائص النوعية الأساسية",
+                            "id": "section_3_4_3",
+                            "start_page": 31,
+                            "end_page": 31,
+                            "hook": null
+                        },
+                        {
+                            "title": "الملاءمة",
+                            "id": "section_3_4_4",
+                            "start_page": 31,
+                            "end_page": 31,
+                            "hook": null
+                        },
+                        {
+                            "title": "المصداقية",
+                            "id": "section_3_4_5",
+                            "start_page": 32,
+                            "end_page": 33,
+                            "hook": null
+                        },
+                        {
+                            "title": "تطبيق الخصائص النوعية الأساسية",
+                            "id": "section_3_4_6",
+                            "start_page": 33,
+                            "end_page": 33,
+                            "hook": null
+                        },
+                        {
+                            "title": "تحسين الخصائص النوعية",
+                            "id": "section_3_4_7",
+                            "start_page": 34,
+                            "end_page": 34,
+                            "hook": null
+                        },
+                        {
+                            "title": "القابلية للمقارنة",
+                            "id": "section_3_4_8",
+                            "start_page": 34,
+                            "end_page": 34,
+                            "hook": null
+                        },
+                        {
+                            "title": "التحقق",
+                            "id": "section_3_4_9",
+                            "start_page": 35,
+                            "end_page": 35,
+                            "hook": null
+                        },
+                        {
+                            "title": "التوقيت",
+                            "id": "section_3_4_10",
+                            "start_page": 35,
+                            "end_page": 35,
+                            "hook": null
+                        },
+                        {
+                            "title": "القابلية للفهم",
+                            "id": "section_3_4_11",
+                            "start_page": 35,
+                            "end_page": 36,
+                            "hook": null
+                        },
+                        {
+                            "title": "تطبيق الخصائص النوعية المحسنة",
+                            "id": "section_3_4_12",
+                            "start_page": 36,
+                            "end_page": 36,
+                            "hook": null
+                        },
+                        {
+                            "title": "قيد التكلفة على التقارير المالية المفيدة",
+                            "id": "section_3_4_13",
+                            "start_page": 36,
+                            "end_page": 37,
+                            "hook": null
+                        }
+                    ]
+                },
+                {
+                    "title": "الجزء (4) النصوص المتبقية",
+                    "id": "section_3_5",
+                    "children": [
+                        {
+                            "title": "فهرس ومقدمة",
+                            "id": "section_3_5_1",
+                            "start_page": 38,
+                            "end_page": 38,
+                            "hook": null
+                        },
+                        {
+                            "title": "الافتراضات والاستمرارية",
+                            "id": "section_3_5_2",
+                            "start_page": 39,
+                            "end_page": 39,
+                            "hook": null
+                        },
+                        {
+                            "title": "عناصر القوائم المالية",
+                            "id": "section_3_5_3",
+                            "start_page": 39,
+                            "end_page": 39,
+                            "hook": null
+                        },
+                        {
+                            "title": "المركز المالي",
+                            "id": "section_3_5_4",
+                            "start_page": 39,
+                            "end_page": 40,
+                            "hook": null
+                        },
+                        {
+                            "title": "الاصول",
+                            "id": "section_3_5_5",
+                            "start_page": 40,
+                            "end_page": 41,
+                            "hook": null
+                        },
+                        {
+                            "title": "الالتزامات",
+                            "id": "section_3_5_6",
+                            "start_page": 42,
+                            "end_page": 43,
+                            "hook": null
+                        },
+                        {
+                            "title": "حقوق الملكية",
+                            "id": "section_3_5_7",
+                            "start_page": 43,
+                            "end_page": 44,
+                            "hook": null
+                        },
+                        {
+                            "title": "الأداء",
+                            "id": "section_3_5_8",
+                            "start_page": 44,
+                            "end_page": 45,
+                            "hook": null
+                        },
+                        {
+                            "title": "الدخل",
+                            "id": "section_3_5_9",
+                            "start_page": 45,
+                            "end_page": 46,
+                            "hook": null
+                        },
+                        {
+                            "title": "المصروفات",
+                            "id": "section_3_5_10",
+                            "start_page": 46,
+                            "end_page": 47,
+                            "hook": null
+                        },
+                        {
+                            "title": "تسويات الحفاظ على رأس المال",
+                            "id": "section_3_5_11",
+                            "start_page": 47,
+                            "end_page": 47,
+                            "hook": null
+                        },
+                        {
+                            "title": "الاعتراف بعناصر القوائم المالية",
+                            "id": "section_3_5_12",
+                            "start_page": 47,
+                            "end_page": 48,
+                            "hook": null
+                        },
+                        {
+                            "title": "توقع تحقق منافع اقتصادية مستقبلية",
+                            "id": "section_3_5_13",
+                            "start_page": 48,
+                            "end_page": 48,
+                            "hook": null
+                        },
+                        {
+                            "title": "مصداقية المقياس",
+                            "id": "section_3_5_14",
+                            "start_page": 48,
+                            "end_page": 49,
+                            "hook": null
+                        },
+                        {
+                            "title": "الاعتراف بالأصول",
+                            "id": "section_3_5_15",
+                            "start_page": 49,
+                            "end_page": 49,
+                            "hook": null
+                        },
+                        {
+                            "title": "الاعتراف بالالتزامات",
+                            "id": "section_3_5_16",
+                            "start_page": 49,
+                            "end_page": 49,
+                            "hook": null
+                        },
+                        {
+                            "title": "الاعتراف بالدخل",
+                            "id": "section_3_5_17",
+                            "start_page": 50,
+                            "end_page": 50,
+                            "hook": null
+                        },
+                        {
+                            "title": "الاعتراف بالمصروفات",
+                            "id": "section_3_5_18",
+                            "start_page": 50,
+                            "end_page": 51,
+                            "hook": null
+                        },
+                        {
+                            "title": "قياس عناصر القوائم المالية",
+                            "id": "section_3_5_19",
+                            "start_page": 51,
+                            "end_page": 52,
+                            "hook": null
+                        },
+                        {
+                            "title": "مفاهيم رأس المال والحفاظ على رأس المال",
+                            "id": "section_3_5_20",
+                            "start_page": 52,
+                            "end_page": 54,
+                            "hook": null
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "معيار المحاسبة المصري رقم (1) عرض القوائم المالية",
+            "id": "section_4",
+            "hook": null,
+            "children": [
+                {
+                    "title": "فهرس ومقدمة",
+                    "id": "section_4_1",
+                    "start_page": 55,
+                    "end_page": 56,
+                    "hook": null
+                },
+                {
+                    "title": "هدف المعيار",
+                    "id": "section_4_2",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "نطاق المعيار",
+                    "id": "section_4_3",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تعريفات",
+                    "id": "section_4_4",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "القوائم المالية",
+                    "id": "section_4_5",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الغرض من القوائم المالية",
+                    "id": "section_4_6",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "المجموعة الكاملة من القوائم المالية",
+                    "id": "section_4_7",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "خصائص عامة",
+                    "id": "section_4_8",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "هيكل ومحتويات القوائم المالية",
+                    "id": "section_4_9",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "مقدمة",
+                    "id": "section_4_10",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تحديد القوائم المالية",
+                    "id": "section_4_11",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "قائمة المركز المالي",
+                    "id": "section_4_12",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "قائمة الدخل (الأرباح أو الخسائر) وقائمة الدخل الشامل",
+                    "id": "section_4_13",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "قائمة التغيرات في حقوق الملكية",
+                    "id": "section_4_14",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "قائمة التدفقات النقدية",
+                    "id": "section_4_15",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الإيضاحات المتممة للقوائم المالية",
+                    "id": "section_4_16",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "دليل توضيحي",
+                    "id": "section_4_17",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                }
+            ]
+        },
+        {
+            "title": "معيار المحاسبة رقم (2) المخزون",
+            "id": "section_5",
+            "hook": null,
+            "children": [
+                {
+                    "title": "فهرس ومقدمة",
+                    "id": "section_5_1",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "هدف المعيار",
+                    "id": "section_5_2",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "نطاق المعيار",
+                    "id": "section_5_3",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تعريفات",
+                    "id": "section_5_4",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "قياس المخزون",
+                    "id": "section_5_5",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تكلفة المخزون",
+                    "id": "section_5_6",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تكاليف الشراء",
+                    "id": "section_5_7",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تكاليف التشكيل",
+                    "id": "section_5_8",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "التكاليف الأخرى",
+                    "id": "section_5_9",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تكلفة المخزون في المنشآت الخدمية",
+                    "id": "section_5_10",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تكلفة المنتجات الزراعية المحصودة من الأصول البيولوجية",
+                    "id": "section_5_11",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "أساليب قياس التكلفة",
+                    "id": "section_5_12",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "طرق حساب التكلفة",
+                    "id": "section_5_13",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "صافي القيمة البيعية",
+                    "id": "section_5_14",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الاعتراف بالمصروف",
+                    "id": "section_5_15",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الإفصاح",
+                    "id": "section_5_16",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                }
+            ]
+        },
+        {
+            "title": "معيار المحاسبة المصري رقم (4) قائمة التدفقات النقدية",
+            "id": "section_6",
+            "hook": null,
+            "children": [
+                {
+                    "title": "فهرس ومقدمة",
+                    "id": "section_6_1",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "هدف المعيار",
+                    "id": "section_6_2",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "نطاق المعيار",
+                    "id": "section_6_3",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "مزايا معلومات التدفق النقدي",
+                    "id": "section_6_4",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تعريفات",
+                    "id": "section_6_5",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "النقدية وما في حكمها",
+                    "id": "section_6_6",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "عرض قائمة التدفقات النقدية",
+                    "id": "section_6_7",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "أنشطة التشغيل",
+                    "id": "section_6_8",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "أنشطة الاستثمار",
+                    "id": "section_6_9",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "أنشطة التمويل",
+                    "id": "section_6_10",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "عرض التدفقات النقدية من أنشطة التشغيل",
+                    "id": "section_6_11",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "عرض التدفقات النقدية من أنشطة الاستثمار والتمويل",
+                    "id": "section_6_12",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "عرض التدفقات النقدية على أساس الصافي",
+                    "id": "section_6_13",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "التدفقات النقدية بالعملة الأجنبية",
+                    "id": "section_6_14",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الفوائد وتوزيعات الأرباح",
+                    "id": "section_6_15",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الضرائب على الدخل",
+                    "id": "section_6_16",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الاستثمارات في شركات تابعة وشقيقة ومشروعات مشتركة",
+                    "id": "section_6_17",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "التغير في حصص الملكية في الشركات التابعة وأنشطة الأعمال الأخرى",
+                    "id": "section_6_18",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "المعاملات غير النقدية",
+                    "id": "section_6_19",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "التغيرات في الالتزامات الناتجة من الأنشطة التمويلية",
+                    "id": "section_6_20",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "مكونات النقدية وما في حكمها",
+                    "id": "section_6_21",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الإفصاحات الأخرى",
+                    "id": "section_6_22",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تاريخ السريان",
+                    "id": "section_6_23",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "أمثلة توضيحية",
+                    "id": "section_6_24",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "ملحق (أ) قائمة التدفقات النقدية لمنشأة من غير المؤسسات المالية",
+                    "id": "section_6_25",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "ملحق (ب) قائمة التدفقات النقدية لمؤسسة مالية",
+                    "id": "section_6_26",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "ملحق (ج) تسويات الالتزامات الناشئة من الأنشطة التمويلية",
+                    "id": "section_6_27",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                }
+            ]
+        },
+        {
+            "title": "معيار المحاسبة المصري رقم (5) السياسات المحاسبية والتغييرات في التقديرات المحاسبية والأخطاء",
+            "id": "section_7",
+            "hook": null,
+            "children": [
+                {
+                    "title": "هدف المعيار",
+                    "id": "section_7_1",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "نطاق المعيار",
+                    "id": "section_7_2",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تعريفات",
+                    "id": "section_7_3",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "السياسات المحاسبية",
+                    "id": "section_7_4",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "اختيار وتطبيق السياسات المحاسبية",
+                    "id": "section_7_5",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "ثبات السياسات المحاسبية",
+                    "id": "section_7_6",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "التغييرات في السياسات المحاسبية",
+                    "id": "section_7_7",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تطبيق التغييرات في السياسات المحاسبية",
+                    "id": "section_7_8",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "التطبيق بأثر رجعي",
+                    "id": "section_7_9",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "القيود على التطبيق بأثر رجعي",
+                    "id": "section_7_10",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الإفصاح",
+                    "id": "section_7_11",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "التغييرات في التقديرات المحاسبية",
+                    "id": "section_7_12",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الإفصاح",
+                    "id": "section_7_13",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الأخطاء",
+                    "id": "section_7_14",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "القيود على إعادة العرض بأثر رجعي",
+                    "id": "section_7_15",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الإفصاح عن أخطاء الفترات السابقة",
+                    "id": "section_7_16",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تعذر إعادة التطبيق وإعادة العرض بأثر رجعي من الناحية العملية",
+                    "id": "section_7_17",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "إرشادات التطبيق",
+                    "id": "section_7_18",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                }
+            ]
+        },
+        {
+            "title": "معيار المحاسبة المصري رقم (7) الأحداث التي تقع بعد الفترة المالية",
+            "id": "section_8",
+            "hook": null,
+            "children": [
+                {
+                    "title": "فهرس ومقدمة",
+                    "id": "section_8_1",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "هدف المعيار",
+                    "id": "section_8_2",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "نطاق المعيار",
+                    "id": "section_8_3",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تعريفات",
+                    "id": "section_8_4",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الاعتراف والقياس",
+                    "id": "section_8_5",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "أحداث تقع بعد الفترة المالية وتتطلب تعديلاً في القوائم المالية",
+                    "id": "section_8_6",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "أحداث تقع بعد الفترة المالية ولا تتطلب تعديلاً في القوائم المالية",
+                    "id": "section_8_7",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "التوزيعات",
+                    "id": "section_8_8",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الاستمرارية",
+                    "id": "section_8_9",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الإفصاح",
+                    "id": "section_8_10",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تاريخ الإصدار",
+                    "id": "section_8_11",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تحديث الإفصاح عن الحالات التي كانت قائمة في تاريخ نهاية الفترة المالية",
+                    "id": "section_8_12",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "أحداث تقع بعد الفترة المالية ولا تتطلب تعديلاً في القوائم المالية",
+                    "id": "section_8_13",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                }
+            ]
+        },
+        {
+            "title": "معيار المحاسبة المصري رقم (10) الأصول الثابتة وإهلاكاتها",
+            "id": "section_9",
+            "hook": null,
+            "childern": [
+                {
+                    "title": "فهرس ومقدمة",
+                    "id": "section_9_1",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "هدف المعيار",
+                    "id": "section_9_2",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "نطاق المعيار",
+                    "id": "section_9_3",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "تعريفات",
+                    "id": "section_9_4",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الاعتراف",
+                    "id": "section_9_5",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "التكاليف الأولية",
+                    "id": "section_9_6",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "التكاليف اللاحقة",
+                    "id": "section_9_7",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "القياس عند الاعتراف",
+                    "id": "section_9_8",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "عناصر التكلفة",
+                    "id": "section_9_9",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "قياس التكلفة",
+                    "id": "section_9_10",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "القياس بعد الاعتراف",
+                    "id": "section_9_11",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "نموذج التكلفة",
+                    "id": "section_9_12",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "نموذج إعادة التقييم (ملغاة)",
+                    "id": "section_9_13",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الإهلاك",
+                    "id": "section_9_14",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "القيمة القابلة للإهلاك وفترة الإهلاك",
+                    "id": "section_9_15",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "طريقة الإهلاك",
+                    "id": "section_9_16",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الاضمحلال",
+                    "id": "section_9_17",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "التعويض عن الاضمحلال",
+                    "id": "section_9_18",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الاستبعاد من الدفاتر",
+                    "id": "section_9_19",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الإفصاح",
+                    "id": "section_9_20",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                },
+                {
+                    "title": "الأحكام الانتقالية",
+                    "id": "section_9_21",
+                    "hook": null,
+                    "start_page": 56,
+                    "end_page": 56
+                }
+            ]
+        }
+    ]
+}
