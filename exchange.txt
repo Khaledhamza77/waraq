@@ -1,0 +1,1 @@
+uv run pytest tests/test_navigation.py -v -s --log-cli-level=DEBUG --log-cli-format="%(name)s %(message)s" --log-filter=waraq
