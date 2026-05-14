@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel
 
+from waraq.observability.tracer import safe_generation
+
 load_dotenv()
 
 log = logging.getLogger(__name__)
@@ -84,6 +86,15 @@ class SILMAClient:
             extra_body={"num_ctx": 32768},
         )
         raw = response.choices[0].message.content or ""
+        usage = response.usage
+        safe_generation(
+            name="complete",
+            model=self._model,
+            messages=messages,
+            completion=raw,
+            prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+            completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        )
         return _clean_llm_output(raw)
 
     def structured(
@@ -126,6 +137,15 @@ class SILMAClient:
                 extra_body={"num_ctx": 32768},
             )
             raw = response.choices[0].message.content or "{}"
+            usage = response.usage
+            safe_generation(
+                name="structured",
+                model=self._model,
+                messages=messages,
+                completion=raw,
+                prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+                completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+            )
             content = _clean_llm_output(raw)
             # Strip any garbage bytes before the opening brace
             brace = content.find("{")

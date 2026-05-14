@@ -1,11 +1,26 @@
 import logging
 import os
+from contextvars import ContextVar, Token
 from typing import Any
 
 log = logging.getLogger(__name__)
 
 _langfuse = None
 _disabled = False
+
+# Holds the current Langfuse trace/span for the active request.
+# asyncio.to_thread() copies the context to the worker thread automatically (Python 3.7+).
+_trace_parent: ContextVar[Any] = ContextVar("langfuse_trace_parent", default=None)
+
+
+def set_trace_parent(parent: Any) -> "Token[Any]":
+    """Set the Langfuse parent for the current async context. Returns a reset token."""
+    return _trace_parent.set(parent)
+
+
+def reset_trace_parent(token: "Token[Any]") -> None:
+    """Restore the previous Langfuse parent (call in finally)."""
+    _trace_parent.reset(token)
 
 
 def get_langfuse():
@@ -68,6 +83,37 @@ def safe_end(span: Any, output: dict[str, Any] | None = None) -> None:
         span.end(output=output or {})
     except Exception:
         log.exception("tracer: span end failed")
+
+
+def safe_generation(
+    name: str,
+    model: str,
+    messages: list[dict[str, str]],
+    completion: str,
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+) -> None:
+    """Log a single LLM API call as a Langfuse generation attached to the current parent.
+
+    No-op when tracing is disabled or no parent is set.
+    """
+    parent = _trace_parent.get()
+    if parent is None:
+        return
+    try:
+        parent.generation(
+            name=name,
+            model=model,
+            input=messages,
+            output=completion,
+            usage={
+                "input": prompt_tokens,
+                "output": completion_tokens,
+                "total": prompt_tokens + completion_tokens,
+            },
+        )
+    except Exception:
+        log.exception("tracer: generation '%s' failed", name)
 
 
 def flush() -> None:

@@ -467,3 +467,102 @@ pytest tests/test_chainlit_app.py -v --log-cli-level=DEBUG  # all tests
 - [ ] `npm install` in `frontend/`
 - [ ] `.chainlit/config.toml` created with CORS origins
 - [ ] End-to-end smoke test: send a query through the Vite frontend, verify response appears and Langfuse trace is recorded
+
+---
+
+## Stage 8 — Per-LLM-call Langfuse Generation Tracing ✅
+
+**Status:** Complete (code implemented; requires Langfuse stack running — see `docs/langfuse_setup.md`)
+**Files:** `waraq/observability/tracer.py` (extended), `waraq/llm/client.py` (extended), `chainlit_app.py` (updated), `docker-compose.yml` (cleaned), `.env.example` (updated), `docs/langfuse_setup.md` (new)
+
+---
+
+### What was built
+
+#### `waraq/observability/tracer.py` — additions
+
+- **`ContextVar[Any] _trace_parent`** — holds the current Langfuse trace for the active async context. Python 3.7+ copies `ContextVar` values into threads spawned via `asyncio.to_thread()`, so the same parent is visible both inside LangGraph node coroutines and in the thread-pool workers that run `generate_answer` / `generate_greeting`.
+- **`set_trace_parent(parent) → Token`** — sets the parent for the current context; returns a reset token.
+- **`reset_trace_parent(token)`** — restores the previous value; called in the `finally` block of `on_message`.
+- **`safe_generation(name, model, messages, completion, prompt_tokens, completion_tokens)`** — logs one Langfuse `generation` object under the current parent. Records the full prompt messages list, the raw completion string, and token counts from the OpenAI response. No-op when tracing is disabled or no parent is set.
+
+#### `waraq/llm/client.py` — additions
+
+`SILMAClient.complete()` and `SILMAClient.structured()` each call `safe_generation()` immediately after the Ollama API call returns. Token counts come from `response.usage` (`prompt_tokens`, `completion_tokens`). `structured()` retries up to twice on JSON decode errors — each API attempt is logged separately, so retry attempts are visible in Langfuse.
+
+#### `chainlit_app.py` — changes
+
+- Imports `set_trace_parent`, `reset_trace_parent` from `tracer`.
+- After creating the Langfuse trace (or `None`), calls `token = set_trace_parent(trace)`.
+- Wraps the entire graph-stream + response-generation block in `try/finally`. The `finally` calls `reset_trace_parent(token)` and `flush()` — guarantees cleanup on both the happy path and the error path (the inner `graph.astream` except block uses `return`, not `raise`, so `finally` still fires).
+
+#### `docker-compose.yml` — cleaned
+
+Stripped to the two services waraq actually needs — `postgres` and `langfuse`. Removed: `app`, `qdrant`, `redis` services and their volumes and networks. The `observability` network is the only one remaining.
+
+#### `docs/langfuse_setup.md` — new
+
+Step-by-step setup guide: create data directories, start the stack, create a Langfuse account and API keys, add keys to `.env`, verify a trace, stop the stack, and a troubleshooting table.
+
+---
+
+### Langfuse trace shape (Stage 8 — complete)
+
+```
+trace: waraq_query  {input: {query: "..."}}
+  ├── span: normalize_query
+  │     └── generation: structured  {model, prompt, completion, prompt_tokens, completion_tokens}
+  ├── span: check_intent
+  │     └── generation: structured  {model, prompt, completion, prompt_tokens, completion_tokens}
+  ├── span: navigate_level_1
+  │     └── generation: structured  {model, prompt, completion, prompt_tokens, completion_tokens}
+  ├── span: navigate_level_N
+  │     └── generation: structured  {model, prompt, completion, prompt_tokens, completion_tokens}
+  └── span: generate_answer
+        └── generation: structured  {model, prompt, completion, prompt_tokens, completion_tokens}
+  [output: {status, navigation_path, navigation_levels, answer_chars}]
+```
+
+Greeting path replaces the last span with `generate_greeting` and a `generation: complete` child.
+
+---
+
+### Design decisions
+
+- **`ContextVar` over explicit param threading** — passing a `span` argument through every LangGraph node, every prompt function, and both responder functions would require touching ~10 files and changing all function signatures. `ContextVar` gives automatic propagation with zero signature changes and correct async task + thread isolation.
+- **Raw completion logged (not cleaned)** — `safe_generation` logs `raw` (before `_clean_llm_output`), so thinking blocks and any JSON decode issues are visible in Langfuse exactly as the model produced them.
+- **One generation per API call** — `structured()` logs each retry attempt separately. If a JSON decode fails and a second attempt is made, both appear in the trace, which surfaces model reliability issues.
+- **Token counts via `response.usage`** — Ollama reports token counts in the OpenAI-compatible response; `getattr(..., 0) or 0` guards against `None` from servers that omit usage.
+
+---
+
+### Run instructions
+
+```bash
+# 1 — Start Langfuse (first time: mkdir -p data/postgres data/langfuse)
+docker compose up -d
+
+# 2 — Create account + project at http://localhost:3000, copy API keys to .env
+
+# 3 — Run waraq
+chainlit run chainlit_app.py --port 8000
+
+# 4 — Verify traces at http://localhost:3000
+```
+
+Full setup walkthrough: `docs/langfuse_setup.md`
+
+---
+
+### Definition of done — Stage 8
+
+- [x] `waraq/observability/tracer.py` extended with `set_trace_parent`, `reset_trace_parent`, `safe_generation`
+- [x] `waraq/llm/client.py` extended — `complete()` and `structured()` call `safe_generation()` per API call
+- [x] `chainlit_app.py` updated — trace parent set/reset via `ContextVar` in `try/finally`
+- [x] `docker-compose.yml` cleaned to postgres + langfuse only
+- [x] `.env.example` updated with docker-compose vars
+- [x] `docs/langfuse_setup.md` written
+- [ ] `docker compose up -d` on target machine
+- [ ] Langfuse account + API keys created at `http://localhost:3000`
+- [ ] Keys added to `.env`, `chainlit run` restarted
+- [ ] Trace verified in Langfuse UI after a live query
