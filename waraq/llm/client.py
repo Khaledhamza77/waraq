@@ -1,6 +1,9 @@
 import json
+import logging
 import os
 from typing import Any
+
+log = logging.getLogger(__name__)
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -18,6 +21,7 @@ def _clean_schema(schema: dict[str, Any]) -> dict[str, Any]:
     Ollama resolves $defs inline and rejects unknown top-level keys like 'title'.
     We inline any $defs and drop decorative-only keys before sending.
     """
+    schema = dict(schema)
     defs = schema.pop("$defs", {})
 
     def inline(node: Any) -> Any:
@@ -93,14 +97,24 @@ class SILMAClient:
                 },
             }
 
-        response = self._client.chat.completions.create(
-            model=self._model,
-            messages=messages,
-            temperature=temperature,
-            response_format=response_format,
-        )
-        content = response.choices[0].message.content or "{}"
-        return json.loads(content)
+        for attempt in range(2):
+            response = self._client.chat.completions.create(
+                model=self._model,
+                messages=messages,
+                temperature=temperature,
+                response_format=response_format,
+                extra_body={"num_ctx": 32768},
+            )
+            content = response.choices[0].message.content or "{}"
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError as exc:
+                log.warning(
+                    "structured(): JSON decode error on attempt %d/2: %s | raw: %.200s",
+                    attempt + 1, exc, content,
+                )
+        log.error("structured(): failed to decode JSON after 2 attempts, returning {}")
+        return {}
 
 
 _default_client: SILMAClient | None = None

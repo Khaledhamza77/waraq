@@ -1,4 +1,6 @@
-from typing import TypedDict
+from typing import Literal, TypedDict
+
+Status = Literal["", "navigating", "found", "not_found", "rejected", "greeting"]
 
 
 class NavigationState(TypedDict, total=False):
@@ -8,5 +10,5 @@ class NavigationState(TypedDict, total=False):
     intent: str
     navigation_path: list[str]
     leaf_content: str
-    leaf_metadata: dict
-    status: str
+    leaf_metadata: list[dict]
+    status: Status

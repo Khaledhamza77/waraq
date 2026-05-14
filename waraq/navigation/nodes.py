@@ -3,12 +3,10 @@ from __future__ import annotations
 import logging
 import re
 from pathlib import Path
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
-from langchain_core.runnables import RunnableConfig  # used by navigate_level
+from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel
-
-log = logging.getLogger(__name__)
 
 from waraq.llm.client import get_client
 from waraq.navigation.prompts import (
@@ -20,6 +18,8 @@ from waraq.navigation.prompts import (
     normalize_query_system,
 )
 from waraq.navigation.state import NavigationState
+
+log = logging.getLogger(__name__)
 
 _ARABIC_RE = re.compile(r"[؀-ۿ]")
 _MAX_DEPTH = 10
@@ -33,7 +33,7 @@ class IntentResult(BaseModel):
 
 
 class NavigationSelection(BaseModel):
-    selected_id: Optional[str]
+    selected_ids: list[str]
     reasoning: str
 
 
@@ -67,8 +67,12 @@ def _extract_leaf_content(node: dict, markdown_dir: Path) -> str:
     parts: list[str] = []
     for page_num in range(node["start_page"], node["end_page"] + 1):
         page_file = markdown_dir / f"page_{page_num}.md"
-        if page_file.exists():
-            parts.append(page_file.read_text(encoding="utf-8"))
+        if not page_file.exists():
+            log.debug("  page file missing: %s", page_file)
+            continue
+        text = page_file.read_text(encoding="utf-8").strip()
+        if text:
+            parts.append(text)
     return "\n\n".join(parts)
 
 
@@ -122,50 +126,71 @@ def navigate_level(state: NavigationState, config: RunnableConfig) -> dict[str, 
 
     log.debug("  candidates  : %s", [f"{c['id']} ({c['title']})" for c in candidates])
 
-    valid_ids = {c["id"] for c in candidates}
+    candidate_map: dict[str, dict] = {c["id"]: c for c in candidates}
+    all_leaves = all(_is_leaf(c) for c in candidates)
 
     result = get_client().structured(
-        prompt=navigate_level_prompt(state["query"], candidates),
+        prompt=navigate_level_prompt(state["query"], candidates, multi_select=all_leaves),
         system=navigate_level_system(),
         schema=NavigationSelection,
     )
-    selected_id: str | None = result.get("selected_id")
+    selected_ids: list[str] = result.get("selected_ids") or []
     reasoning: str = result.get("reasoning", "")
 
-    log.debug("  llm selected: %s", selected_id)
+    log.debug("  llm selected: %s", selected_ids)
     log.debug("  reasoning   : %s", reasoning)
 
-    if not selected_id:
-        log.debug("  → selected_id is null/empty, not_found")
+    if not selected_ids:
+        log.debug("  → selected_ids is empty, not_found")
         return {"status": "not_found"}
 
-    if selected_id not in valid_ids:
-        log.debug("  → '%s' not in valid_ids %s, not_found", selected_id, valid_ids)
+    # Filter to only IDs that actually exist in the candidate set, preserving order
+    resolved: list[tuple[str, dict]] = [
+        (sid, candidate_map[sid]) for sid in selected_ids if sid in candidate_map
+    ]
+    if not resolved:
+        log.debug("  → none of %s are valid candidates, not_found", selected_ids)
         return {"status": "not_found"}
 
-    node = _find_node(index["sections"], selected_id)
-    if node is None:
-        log.debug("  → node '%s' not found in index, not_found", selected_id)
-        return {"status": "not_found"}
+    leaf_nodes = [(sid, n) for sid, n in resolved if _is_leaf(n)]
+    non_leaf_nodes = [(sid, n) for sid, n in resolved if not _is_leaf(n)]
 
-    new_path = navigation_path + [selected_id]
-    log.debug("  node type   : %s", "leaf" if _is_leaf(node) else "non-leaf")
+    log.debug("  node types  : %d leaf(s), %d non-leaf(s)", len(leaf_nodes), len(non_leaf_nodes))
 
-    if _is_leaf(node):
+    # Intermediate navigation: descend into the first non-leaf
+    if non_leaf_nodes:
+        sid, node = non_leaf_nodes[0]
+        if len(non_leaf_nodes) > 1:
+            ignored = [s for s, _ in non_leaf_nodes[1:]]
+            log.warning("  LLM returned %d non-leaf selections; ignoring %s", len(non_leaf_nodes), ignored)
+        new_path = navigation_path + [sid]
+        log.debug("  → descending into '%s' (%s)", sid, node["title"])
+        return {"navigation_path": new_path, "status": "navigating"}
+
+    # Leaf level: collect content from all selected leaves
+    all_content: list[str] = []
+    all_metadata: list[dict] = []
+    for sid, node in leaf_nodes:
         content = _extract_leaf_content(node, markdown_dir)
-        log.debug("  → found leaf '%s', content length: %d chars", selected_id, len(content))
-        return {
-            "navigation_path": new_path,
-            "leaf_content": content,
-            "leaf_metadata": {
-                "id": node["id"],
-                "title": node["title"],
-                "start_page": node["start_page"],
-                "end_page": node["end_page"],
-                "chunk_ids": node.get("chunk_ids", []),
-            },
-            "status": "found",
-        }
+        if content:
+            all_content.append(content)
+        all_metadata.append({
+            "id": node["id"],
+            "title": node["title"],
+            "start_page": node["start_page"],
+            "end_page": node["end_page"],
+            "chunk_ids": node.get("chunk_ids", []),
+        })
 
-    log.debug("  → descending into '%s'", selected_id)
-    return {"navigation_path": new_path, "status": "navigating"}
+    if not all_content:
+        log.warning("  → no readable page files for any selected leaf, not_found")
+        return {"status": "not_found"}
+
+    new_path = navigation_path + [sid for sid, _ in leaf_nodes]
+    log.debug("  → found %d leaf(s): %s", len(leaf_nodes), [sid for sid, _ in leaf_nodes])
+    return {
+        "navigation_path": new_path,
+        "leaf_content": "\n\n---\n\n".join(all_content),
+        "leaf_metadata": all_metadata,
+        "status": "found",
+    }
