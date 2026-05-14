@@ -91,7 +91,7 @@ def normalize_query(state: NavigationState) -> dict[str, Any]:
 
 def check_intent(state: NavigationState) -> dict[str, Any]:
     result = get_client().structured(
-        prompt=check_intent_prompt(state["query"]),
+        prompt=check_intent_prompt(state["original_query"]),
         system=check_intent_system(),
         schema=IntentResult,
     )
@@ -126,7 +126,12 @@ def navigate_level(state: NavigationState, config: RunnableConfig) -> dict[str, 
 
     log.debug("  candidates  : %s", [f"{c['id']} ({c['title']})" for c in candidates])
 
-    candidate_map: dict[str, dict] = {c["id"]: c for c in candidates}
+    candidate_map: dict[str, dict] = {}
+    for c in candidates:
+        candidate_map[c["id"]] = c
+        short = c["id"].removeprefix("section_")
+        if short != c["id"]:
+            candidate_map[short] = c
     all_leaves = all(_is_leaf(c) for c in candidates)
 
     result = get_client().structured(
@@ -144,9 +149,10 @@ def navigate_level(state: NavigationState, config: RunnableConfig) -> dict[str, 
         log.debug("  → selected_ids is empty, not_found")
         return {"status": "not_found"}
 
-    # Filter to only IDs that actually exist in the candidate set, preserving order
+    # Filter to valid candidates, preserving order; always use the canonical node ID
     resolved: list[tuple[str, dict]] = [
-        (sid, candidate_map[sid]) for sid in selected_ids if sid in candidate_map
+        (candidate_map[sid]["id"], candidate_map[sid])
+        for sid in selected_ids if sid in candidate_map
     ]
     if not resolved:
         log.debug("  → none of %s are valid candidates, not_found", selected_ids)
