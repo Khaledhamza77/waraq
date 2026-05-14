@@ -58,6 +58,7 @@ class SILMAClient:
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
+            extra_body={"num_ctx": 4096},
         )
         return response.choices[0].message.content or ""
 
