@@ -32,7 +32,15 @@ def build_graph():
 
     builder.add_edge(START, "normalize_query")
     builder.add_edge("normalize_query", "check_intent")
-    builder.add_conditional_edges("check_intent", _route_intent)
-    builder.add_conditional_edges("navigate_level", _route_navigate)
+    builder.add_conditional_edges(
+        "check_intent",
+        _route_intent,
+        {END: END, "navigate_level": "navigate_level"},
+    )
+    builder.add_conditional_edges(
+        "navigate_level",
+        _route_navigate,
+        {END: END, "navigate_level": "navigate_level"},
+    )
 
     return builder.compile()
