@@ -425,12 +425,44 @@ cd frontend && npm install && npm run dev
 
 ---
 
+### Test — `tests/test_chainlit_app.py`
+
+Mixed unit + integration test file. 7 unit tests (no Ollama), 4 integration tests (Ollama required).
+
+**Strategy:** The entire `chainlit` package is replaced in `sys.modules` with a `MagicMock` before `chainlit_app` is imported. This makes `@cl.on_chat_start` and `@cl.on_message` transparent pass-through decorators, leaving the handler functions directly callable as plain async coroutines. `cl.Message` is replaced with `_FakeMessage`, a minimal class that appends every instance to a class-level list so tests can inspect the final `.content` sent to the user.
+
+**`_FakeMessage` tracking:** `on_message` creates exactly one `cl.Message` object per turn (the AI response bubble) and mutates its `.content` through the streaming process. `_FakeMessage._instances[-1]` after the call always holds the final message state.
+
+**Unit tests:**
+- `test_on_chat_start_populates_session` — verifies the session receives a non-None graph and a config dict with `index` (dict with `sections`) and `markdown_dir`
+- `test_format_response_no_citations` — answer with empty citations returns the answer string unchanged
+- `test_format_response_single_page_citation` — `start == end` → `"صفحة N"` (singular), no `"صفحات"`
+- `test_format_response_multi_page_citation` — `start != end` → `"صفحات N–M"` form
+- `test_format_response_multiple_citations` — two citations produce two `"- "` list items
+- `test_span_output_excludes_leaf_content` — `_span_output_from_updates` strips `leaf_content` but preserves all other fields
+- `test_graph_stream_failure_shows_arabic_error` — replaces the session graph with a mock whose `astream` raises `RuntimeError` immediately; verifies the final message contains "خطأ" (Arabic for "error")
+
+**Integration tests:**
+- `test_on_message_greeting` — "مرحباً" → non-trivial string, no "المصادر"
+- `test_on_message_valid_accounting_query` — known-answer query → substantive answer with "المصادر" section
+- `test_on_message_rejected_query` — off-topic (cooking) → short rejection, no citations
+- `test_langfuse_disabled_does_not_affect_response` — patches `get_langfuse` to return None; answer quality identical to normal path
+
+**Run:**
+```
+pytest tests/test_chainlit_app.py -v -m "not integration"   # unit only, no Ollama
+pytest tests/test_chainlit_app.py -v --log-cli-level=DEBUG  # all tests
+```
+
+---
+
 ### Definition of done — Stage 7
 
 - [x] `chainlit_app.py` implemented with `@cl.on_chat_start` and `@cl.on_message`
 - [x] `waraq/observability/tracer.py` implemented with `get_langfuse`, `safe_span`, `safe_end`, `flush`
 - [x] `pyproject.toml` updated — `chainlit` added, `fastapi`/`uvicorn` removed
 - [x] Paths anchored to `Path(__file__).parent` (CWD-safe)
+- [x] `tests/test_chainlit_app.py` written — 7 unit tests + 4 integration tests
 - [ ] `pip install chainlit` on target machine
 - [ ] `npm install` in `frontend/`
 - [ ] `.chainlit/config.toml` created with CORS origins
