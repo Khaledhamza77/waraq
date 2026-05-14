@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Any, Literal, Optional
 
-from langchain_core.runnables import RunnableConfig
+from langchain_core.runnables import RunnableConfig  # used by navigate_level
 from pydantic import BaseModel
 
 from waraq.llm.client import get_client
@@ -71,7 +71,7 @@ def _extract_leaf_content(node: dict, markdown_dir: Path) -> str:
 
 # ── Graph nodes ───────────────────────────────────────────────────────────────
 
-def normalize_query(state: NavigationState, config: RunnableConfig) -> dict[str, Any]:
+def normalize_query(state: NavigationState) -> dict[str, Any]:
     query = state["original_query"]
     language = "ar" if _ARABIC_RE.search(query) else "en"
 
@@ -82,7 +82,7 @@ def normalize_query(state: NavigationState, config: RunnableConfig) -> dict[str,
     return {"query": normalized.strip(), "language": language}
 
 
-def check_intent(state: NavigationState, config: RunnableConfig) -> dict[str, Any]:
+def check_intent(state: NavigationState) -> dict[str, Any]:
     result = get_client().structured(
         prompt=check_intent_prompt(state["query"]),
         system=check_intent_system(),

@@ -3,6 +3,7 @@ Integration smoke tests for the Stage 5 navigation graph.
 
 Requires a running Ollama server (LLM_BASE_URL / LLM_MODEL set in .env).
 Run with: pytest tests/test_navigation.py -v
+Skip in environments without Ollama: pytest -m "not integration"
 """
 import json
 from pathlib import Path
@@ -14,6 +15,8 @@ from waraq.navigation.state import NavigationState
 
 INDEX_PATH = Path(__file__).parent.parent / "data" / "index.json"
 MARKDOWN_DIR = Path(__file__).parent.parent / "data" / "parsed" / "markdown" / "pages"
+
+pytestmark = pytest.mark.integration
 
 
 @pytest.fixture(scope="module")
@@ -34,7 +37,7 @@ def _run(graph_config, query: str) -> NavigationState:
         "navigation_path": [],
         "leaf_content": "",
         "leaf_metadata": {},
-        "status": "navigating",
+        "status": "",
     }
     return graph.invoke(initial, config=config)
 
@@ -91,5 +94,3 @@ def test_greeting_handled(graph_config):
     """Greeting should be classified as greeting, not rejected or navigated."""
     result = _run(graph_config, "مرحبا، كيف يمكنك مساعدتي؟")
     assert result["status"] == "greeting"
-
-
