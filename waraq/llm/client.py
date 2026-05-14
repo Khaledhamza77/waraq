@@ -12,6 +12,29 @@ _BASE_URL = os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
 _MODEL = os.getenv("LLM_MODEL", "silma-v1")
 
 
+def _clean_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """Strip Pydantic-generated metadata that confuses Ollama's grammar engine.
+
+    Ollama resolves $defs inline and rejects unknown top-level keys like 'title'.
+    We inline any $defs and drop decorative-only keys before sending.
+    """
+    defs = schema.pop("$defs", {})
+
+    def inline(node: Any) -> Any:
+        if isinstance(node, dict):
+            if "$ref" in node:
+                ref_name = node["$ref"].split("/")[-1]
+                return inline(defs.get(ref_name, node))
+            return {k: inline(v) for k, v in node.items() if k != "title"}
+        if isinstance(node, list):
+            return [inline(i) for i in node]
+        return node
+
+    cleaned = inline(schema)
+    cleaned.pop("title", None)
+    return cleaned
+
+
 class SILMAClient:
     def __init__(self, base_url: str = _BASE_URL, model: str = _MODEL) -> None:
         # Ollama's OpenAI-compatible endpoint; api_key is required by the client but unused
@@ -45,8 +68,8 @@ class SILMAClient:
     ) -> dict[str, Any]:
         """Call the model with structured JSON output.
 
-        Uses Ollama's json_schema response_format (0.5+) when a schema is
-        provided, otherwise falls back to json_object mode.
+        Uses Ollama's json_schema response_format when a schema is provided,
+        otherwise falls back to json_object mode.
         """
         messages = []
         if system:
@@ -56,15 +79,14 @@ class SILMAClient:
         if schema is None:
             response_format: dict[str, Any] = {"type": "json_object"}
         else:
-            json_schema = (
-                schema.model_json_schema() if not isinstance(schema, dict) else schema
+            raw = (
+                schema.model_json_schema() if not isinstance(schema, dict) else dict(schema)
             )
             response_format = {
                 "type": "json_schema",
                 "json_schema": {
                     "name": "result",
-                    "schema": json_schema,
-                    "strict": True,
+                    "schema": _clean_schema(raw),
                 },
             }
 
