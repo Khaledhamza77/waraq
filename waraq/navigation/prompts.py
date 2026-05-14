@@ -1,3 +1,60 @@
+# ── Stage 5: Navigation prompts ──────────────────────────────────────────────
+
+def normalize_query_system() -> str:
+    return (
+        "أنت متخصص في معايير المحاسبة المصرية. "
+        "إذا كان السؤال بالإنجليزية، ترجمه أولاً إلى العربية. "
+        "ثم أعد صياغته بأسلوب رسمي ودقيق يناسب البحث في وثيقة تنظيمية. "
+        "أعد السؤال المُعاد صياغته فقط دون أي شرح."
+    )
+
+
+def normalize_query_prompt(query: str, language: str) -> str:
+    if language == "en":
+        return f"ترجم هذا السؤال إلى العربية الفصحى وأعد صياغته بشكل رسمي:\n\n{query}"
+    return f"أعد صياغة هذا السؤال بأسلوب رسمي ودقيق:\n\n{query}"
+
+
+def check_intent_system() -> str:
+    return (
+        "أنت نظام تصنيف لنظام إجابة متخصص في معايير المحاسبة المصرية. "
+        "صنّف نية المستخدم في إحدى الفئات الثلاث:\n"
+        "- 'valid': سؤال عن معايير المحاسبة المصرية أو القوائم المالية أو الالتزامات المحاسبية أو تفسير المعايير\n"
+        "- 'greeting': تحية أو رسالة ودية لا تحتوي على سؤال محاسبي\n"
+        "- 'invalid': أي موضوع خارج نطاق معايير المحاسبة المصرية"
+    )
+
+
+def check_intent_prompt(query: str) -> str:
+    return f"السؤال: {query}"
+
+
+def navigate_level_system() -> str:
+    return (
+        "أنت نظام تنقل في وثيقة معايير المحاسبة المصرية. "
+        "اختر القسم الأنسب للإجابة على سؤال المستخدم من بين الأقسام المتاحة. "
+        "إذا لم يكن أي قسم ذا صلة بالسؤال، اترك الحقل فارغاً."
+    )
+
+
+def navigate_level_prompt(query: str, candidates: list[dict]) -> str:
+    sections = []
+    for c in candidates:
+        hook = c.get("hook")
+        entry = f"- id: {c['id']}\n  العنوان: {c['title']}"
+        if hook:
+            entry += f"\n  الوصف: {hook}"
+        sections.append(entry)
+    sections_text = "\n\n".join(sections)
+    return (
+        f"السؤال: {query}\n\n"
+        f"الأقسام المتاحة:\n\n{sections_text}\n\n"
+        "أعد id القسم الأكثر صلة بالسؤال، أو null إذا لم يكن أي قسم مناسباً."
+    )
+
+
+# ── Stage 4: Summary prompts ──────────────────────────────────────────────────
+
 def _location_line(breadcrumb: list[str]) -> str:
     if not breadcrumb:
         return ""
