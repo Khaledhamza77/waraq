@@ -19,20 +19,18 @@ NOT_FOUND_ANSWER = (
 )
 
 
-class _Pages(BaseModel):
-    start: int
-    end: int
-
-
-class _Citation(BaseModel):
-    node_id: str
-    title: str
-    pages: _Pages
-
-
 class _AnswerResponse(BaseModel):
     answer: str
-    citation: _Citation
+
+
+def _build_citation(leaf_metadata: list[dict]) -> dict[str, Any]:
+    """Build citation dict from the first (primary) leaf returned by navigation."""
+    m = leaf_metadata[0]
+    return {
+        "node_id": m["id"],
+        "title": m["title"],
+        "pages": {"start": m["start_page"], "end": m["end_page"]},
+    }
 
 
 def generate_answer(
@@ -48,7 +46,11 @@ def generate_answer(
     )
     if not result:
         log.error("generate_answer: structured() returned empty dict")
-    return result
+        return {}
+    return {
+        "answer": result.get("answer", ""),
+        "citation": _build_citation(leaf_metadata),
+    }
 
 
 def generate_greeting(query: str) -> str:

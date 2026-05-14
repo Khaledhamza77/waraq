@@ -127,6 +127,10 @@ class SILMAClient:
             )
             raw = response.choices[0].message.content or "{}"
             content = _clean_llm_output(raw)
+            # Strip any garbage bytes before the opening brace
+            brace = content.find("{")
+            if brace > 0:
+                content = content[brace:]
             try:
                 return json.loads(content)
             except json.JSONDecodeError as exc:
