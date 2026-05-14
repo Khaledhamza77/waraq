@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import re
 from pathlib import Path
 from typing import Any, Literal, Optional
 
 from langchain_core.runnables import RunnableConfig  # used by navigate_level
 from pydantic import BaseModel
+
+log = logging.getLogger(__name__)
 
 from waraq.llm.client import get_client
 from waraq.navigation.prompts import (
@@ -105,12 +108,19 @@ def navigate_level(state: NavigationState, config: RunnableConfig) -> dict[str, 
 
     navigation_path: list[str] = state.get("navigation_path") or []
 
+    log.debug("── navigate_level ──────────────────────────")
+    log.debug("  path so far : %s", navigation_path or "[root]")
+
     if len(navigation_path) >= _MAX_DEPTH:
+        log.debug("  → depth limit reached, not_found")
         return {"status": "not_found"}
 
     candidates = _get_candidates(index, navigation_path)
     if not candidates:
+        log.debug("  → no candidates at this level, not_found")
         return {"status": "not_found"}
+
+    log.debug("  candidates  : %s", [f"{c['id']} ({c['title']})" for c in candidates])
 
     valid_ids = {c["id"] for c in candidates}
 
@@ -120,18 +130,30 @@ def navigate_level(state: NavigationState, config: RunnableConfig) -> dict[str, 
         schema=NavigationSelection,
     )
     selected_id: str | None = result.get("selected_id")
+    reasoning: str = result.get("reasoning", "")
 
-    if not selected_id or selected_id not in valid_ids:
+    log.debug("  llm selected: %s", selected_id)
+    log.debug("  reasoning   : %s", reasoning)
+
+    if not selected_id:
+        log.debug("  → selected_id is null/empty, not_found")
+        return {"status": "not_found"}
+
+    if selected_id not in valid_ids:
+        log.debug("  → '%s' not in valid_ids %s, not_found", selected_id, valid_ids)
         return {"status": "not_found"}
 
     node = _find_node(index["sections"], selected_id)
     if node is None:
+        log.debug("  → node '%s' not found in index, not_found", selected_id)
         return {"status": "not_found"}
 
     new_path = navigation_path + [selected_id]
+    log.debug("  node type   : %s", "leaf" if _is_leaf(node) else "non-leaf")
 
     if _is_leaf(node):
         content = _extract_leaf_content(node, markdown_dir)
+        log.debug("  → found leaf '%s', content length: %d chars", selected_id, len(content))
         return {
             "navigation_path": new_path,
             "leaf_content": content,
@@ -145,4 +167,5 @@ def navigate_level(state: NavigationState, config: RunnableConfig) -> dict[str, 
             "status": "found",
         }
 
+    log.debug("  → descending into '%s'", selected_id)
     return {"navigation_path": new_path, "status": "navigating"}
