@@ -1,0 +1,37 @@
+{
+    "document": {
+        "title": "معايير المحاسبة المصرية",
+        "total_pages": 208,
+        "language": "ar"
+    },
+    "sections": [
+        {
+            "title": "المقدمة",
+            "id": "section_2",
+            "hook": null,
+            "children": [
+                {
+                    "title": "مقدمة",
+                    "id": "section_2_1",
+                    "start_page": 8,
+                    "end_page": 9,
+                    "hook": null
+                },
+                {
+                    "title": "تمهيد",
+                    "id": "section_2_2",
+                    "start_page": 10,
+                    "end_page": 10,
+                    "hook": null
+                },
+                {
+                    "title": "ملحق التمهيد",
+                    "id": "section_2_3",
+                    "start_page": 11,
+                    "end_page": 13,
+                    "hook": null
+                }
+            ]
+        }
+    ]
+}

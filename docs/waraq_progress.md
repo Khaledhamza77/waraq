@@ -123,6 +123,120 @@ vLLM was the original plan but was dropped — it requires a full Linux CUDA env
 
 - [x] `waraq/llm/client.py` implemented with `complete()` and `structured()` methods
 - [x] `scripts/test_llm.py` written
-- [ ] Live test: `python scripts/test_llm.py` passes against a running Ollama server
+- [x] Live test: `python scripts/test_llm.py` passes against a running Ollama server
 
 See `docs/stage3_setup_guide.md` for setup and test instructions.
+
+---
+
+## Stage 4 — Summary Generation (Bottom-Up) ✅
+
+**Status:** Complete (code implemented; run script once to fill hooks)
+**Files:** `scripts/run_summary_gen.py`, `waraq/navigation/prompts.py`
+
+---
+
+### What was built
+
+#### `waraq/navigation/prompts.py`
+Centralised prompt functions used by both Stage 4 and Stage 5:
+- `summarize_leaf_prompt(title, content)` + `summarize_leaf_system()` — asks the model what regulatory/accounting questions this section answers, in a retrieval-friendly style
+- `rollup_prompt(title, child_hooks)` + `rollup_system()` — synthesises child summaries into a unified parent hook
+
+#### `scripts/run_summary_gen.py`
+Fills every `hook` field in `data/index.json` via bottom-up LLM calls.
+
+Key behaviours:
+- **Text source** — reads `data/parsed/markdown/pages/page_N.md` directly; does not touch `output.json`
+- **Post-order traversal** — leaf nodes are processed before their parents; parent hooks are rolled up from child hooks
+- **Idempotent** — nodes with an existing non-null hook are skipped; safe to interrupt and re-run
+- **Atomic saves** — writes to `data/index.json.tmp` then renames; a crashed run never corrupts the file
+- **Empty content handling** — if a leaf's page range yields no markdown text, the node is skipped and logged; hook stays null
+- **Null child handling** — a non-leaf node is skipped if none of its children have hooks yet
+
+---
+
+### Definition of done — Stage 4
+
+- [x] `scripts/run_summary_gen.py` implemented
+- [x] `waraq/navigation/prompts.py` created
+- [ ] `python scripts/run_summary_gen.py` completes with all (or near-all) hooks filled
+- [ ] Spot-check: 5 hooks read as accurate Arabic summaries relevant to the section content
+
+---
+
+## Stage 5 — LangGraph Navigation System ✅
+
+**Status:** Complete (code implemented; run `pytest tests/test_navigation.py` once Ollama is serving)  
+**Files:** `waraq/navigation/state.py`, `waraq/navigation/nodes.py`, `waraq/navigation/graph.py`, `waraq/navigation/prompts.py` (extended), `tests/test_navigation.py`
+
+---
+
+### What was built
+
+#### `waraq/navigation/state.py`
+`NavigationState` TypedDict — defined once, imported by both nodes and graph to avoid circular imports.
+
+Fields: `original_query`, `query`, `language`, `intent`, `navigation_path`, `leaf_content`, `leaf_metadata`, `status`.
+
+#### `waraq/navigation/nodes.py`
+All graph nodes plus index traversal helpers and Pydantic schemas.
+
+**Index helpers:**
+- `_find_node(sections, node_id)` — recursive DFS lookup by id
+- `_is_leaf(node)` — true if node has `start_page` and no `children`
+- `_get_candidates(index, navigation_path)` — root sections if path is empty, otherwise children of last selected node
+- `_extract_leaf_content(node, markdown_dir)` — reads `page_N.md` files for the leaf's page range and concatenates them
+
+**Pydantic schemas:**
+- `IntentResult` — `intent: Literal["valid", "invalid", "greeting"]`, `reason: str`
+- `NavigationSelection` — `selected_id: Optional[str]`, `reasoning: str`
+
+**Nodes:**
+- `normalize_query` — heuristic Arabic detection (Unicode range `؀–ۿ`), single LLM call that translates if English and normalises to formal Arabic phrasing
+- `check_intent` — structured call classifying the query as `valid`, `greeting`, or `invalid`; sets `status` to `navigating`, `greeting`, or `rejected` accordingly
+- `navigate_level` — core loop node: gets candidates at the current depth, calls LLM for a single selection, validates the returned id against the actual candidate set (hallucination guard), extracts leaf content on arrival, or appends to `navigation_path` and loops; `status = "not_found"` if LLM returns null or an invalid id; depth capped at 10 levels
+
+#### `waraq/navigation/graph.py`
+`build_graph()` returns a compiled `StateGraph`. No arguments — index and markdown dir travel via `RunnableConfig["configurable"]` at invocation time:
+
+```python
+graph.invoke(initial_state, config={"configurable": {"index": index, "markdown_dir": markdown_dir}})
+```
+
+Graph edges:
+- `START → normalize_query → check_intent`
+- `check_intent` → `END` if `rejected`/`greeting`, else `navigate_level`
+- `navigate_level` → self-loop if `navigating`, else `END`
+
+#### `waraq/navigation/prompts.py` (extended)
+Added Stage 5 prompts: `normalize_query_system/prompt`, `check_intent_system/prompt`, `navigate_level_system/prompt`. Stage 4 prompts unchanged.
+
+When hooks are null (Stage 4 not yet run), `navigate_level_prompt` falls back to node titles — navigation still works, just with less signal.
+
+#### `tests/test_navigation.py`
+8 integration tests against a live Ollama server:
+- 5 known-answer queries each asserting a specific leaf `id`
+- 1 out-of-domain rejection
+- 1 greeting classification
+- 1 leaf-content-non-empty assertion
+
+---
+
+### Design decisions
+
+- **Single-branch navigation** — one node selected per level; multi-branch deferred to a later iteration
+- **No confidence-triggered retry** — retry mechanism removed for this PoC; `rephrase_and_retry` node not built
+- **Greeting as first-class intent** — `check_intent` has three outcomes (`valid`, `greeting`, `invalid`) so greetings don't get rejected as invalid queries; API layer (Stage 7) returns a friendly canned response for `status = "greeting"`
+- **ID validation after LLM selection** — `selected_id` is checked against the set of actual candidate ids before use; an out-of-set or null id immediately returns `not_found`
+
+---
+
+### Definition of done — Stage 5
+
+- [x] `waraq/navigation/state.py` implemented
+- [x] `waraq/navigation/nodes.py` implemented with all 3 nodes and index helpers
+- [x] `waraq/navigation/graph.py` implemented
+- [x] `waraq/navigation/prompts.py` extended with navigation prompts
+- [x] `tests/test_navigation.py` written with 8 tests
+- [ ] `pytest tests/test_navigation.py` passes all 8 tests against a live Ollama server
