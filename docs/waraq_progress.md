@@ -123,6 +123,42 @@ vLLM was the original plan but was dropped — it requires a full Linux CUDA env
 
 - [x] `waraq/llm/client.py` implemented with `complete()` and `structured()` methods
 - [x] `scripts/test_llm.py` written
-- [ ] Live test: `python scripts/test_llm.py` passes against a running Ollama server
+- [x] Live test: `python scripts/test_llm.py` passes against a running Ollama server
 
 See `docs/stage3_setup_guide.md` for setup and test instructions.
+
+---
+
+## Stage 4 — Summary Generation (Bottom-Up) ✅
+
+**Status:** Complete (code implemented; run script once to fill hooks)
+**Files:** `scripts/run_summary_gen.py`, `waraq/navigation/prompts.py`
+
+---
+
+### What was built
+
+#### `waraq/navigation/prompts.py`
+Centralised prompt functions used by both Stage 4 and Stage 5:
+- `summarize_leaf_prompt(title, content)` + `summarize_leaf_system()` — asks the model what regulatory/accounting questions this section answers, in a retrieval-friendly style
+- `rollup_prompt(title, child_hooks)` + `rollup_system()` — synthesises child summaries into a unified parent hook
+
+#### `scripts/run_summary_gen.py`
+Fills every `hook` field in `data/index.json` via bottom-up LLM calls.
+
+Key behaviours:
+- **Text source** — reads `data/parsed/markdown/pages/page_N.md` directly; does not touch `output.json`
+- **Post-order traversal** — leaf nodes are processed before their parents; parent hooks are rolled up from child hooks
+- **Idempotent** — nodes with an existing non-null hook are skipped; safe to interrupt and re-run
+- **Atomic saves** — writes to `data/index.json.tmp` then renames; a crashed run never corrupts the file
+- **Empty content handling** — if a leaf's page range yields no markdown text, the node is skipped and logged; hook stays null
+- **Null child handling** — a non-leaf node is skipped if none of its children have hooks yet
+
+---
+
+### Definition of done — Stage 4
+
+- [x] `scripts/run_summary_gen.py` implemented
+- [x] `waraq/navigation/prompts.py` created
+- [ ] `python scripts/run_summary_gen.py` completes with all (or near-all) hooks filled
+- [ ] Spot-check: 5 hooks read as accurate Arabic summaries relevant to the section content
