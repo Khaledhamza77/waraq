@@ -21,6 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
 TEST_INDEX_PATH = ROOT / "data" / "index-test.json"
+TEST_OUTPUT_PATH = ROOT / "data" / "index-test-output.json"
 PAGES_DIR = ROOT / "data" / "parsed" / "markdown" / "pages"
 
 sys.path.insert(0, str(ROOT))
@@ -165,8 +166,14 @@ def main() -> None:
             bar.write(f"Section: {section.get('id')} — {section.get('title')}")
             process_node(section, client, bar)
 
+    # Write filled hooks to disk for inspection
+    TEST_OUTPUT_PATH.write_text(
+        json.dumps(index_data, ensure_ascii=False, indent=4), encoding="utf-8"
+    )
+    print(f"\nOutput written to {TEST_OUTPUT_PATH.relative_to(ROOT)}\n")
+
     # Assertions
-    print("\n--- Results ---\n")
+    print("--- Results ---\n")
     passed = 0
     failed = 0
 
