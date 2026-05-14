@@ -334,3 +334,104 @@ Chains the full pipeline (navigate → respond) for each of the 5 known-answer q
 ```
 pytest tests/test_nav_responder.py -v --log-cli-level=DEBUG
 ```
+
+---
+
+## Stage 7 — Chainlit Application ✅
+
+**Status:** Complete (code implemented; install `chainlit` then run)
+**Files:** `chainlit_app.py`, `waraq/observability/tracer.py`, `pyproject.toml` (updated)
+
+---
+
+### What was built
+
+#### `waraq/observability/tracer.py`
+Thin, fail-safe Langfuse wrapper. Never raises — all exceptions are caught and logged.
+
+- **`get_langfuse()`** — lazy singleton. Returns `None` silently if `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` are absent or if `langfuse` is not installed. Sets `_disabled = True` on first failure to avoid repeated retry overhead.
+- **`safe_span(parent, name, input, output)`** — creates a Langfuse span on a trace or parent span. If `output` is provided, closes the span immediately (single-shot pattern). Returns `None` on any failure.
+- **`safe_end(span, output)`** — closes an open span. No-op if span is `None`.
+- **`flush()`** — flushes buffered Langfuse events. Reads `_langfuse` directly (no init trigger).
+
+#### `chainlit_app.py`
+Entry point for the Chainlit server.
+
+**`@cl.on_chat_start`**: Reads `data/index.json`, calls `build_graph()`, stores both in the Chainlit user session. Index and graph are per-session (one load per connected client). Paths are anchored to `Path(__file__).parent` — safe regardless of the working directory at startup.
+
+**`@cl.on_message`**: Full pipeline handler.
+1. Creates a Langfuse trace (`waraq_query`) with the raw user query as input.
+2. Sends an initial Chainlit message bubble with "جاري تحليل نية السؤال..."
+3. Streams `graph.astream(initial, config, stream_mode="updates")` — **async, per-node**. Each yielded chunk fires:
+   - A Chainlit message update with a human-readable Arabic status string
+   - A closed Langfuse span for that node (input = query + current navigation path; output = all state updates except `leaf_content`)
+4. Accumulates full navigation state via `nav.update(updates)` across all chunks.
+5. Branches on `pipeline_status`:
+   - **`found`** → updates status to "جاري صياغة الإجابة...", opens a `generate_answer` Langfuse span, calls `generate_answer()` in `asyncio.to_thread`, closes the span, formats answer + citations as markdown.
+   - **`greeting`** → calls `generate_greeting()` in `asyncio.to_thread`, logs a `generate_greeting` span.
+   - **`not_found`** → returns `NOT_FOUND_ANSWER` constant; no LLM call.
+   - **`rejected`** → returns a canned Arabic rejection; no LLM call.
+6. Sets `msg.content` to the final markdown and calls `await msg.update()`.
+7. Updates the Langfuse trace output with `{status, navigation_path, navigation_levels, answer_chars}` and flushes.
+
+**Error handling**: a top-level `try/except` around `graph.astream` shows a user-facing Arabic error message, updates the trace with `{"error": "graph_stream_failed"}`, and returns cleanly.
+
+#### `pyproject.toml`
+- Removed `fastapi`, `uvicorn` (unused in Chainlit architecture)
+- Added `chainlit>=2.0.0`
+
+---
+
+### Langfuse trace shape
+
+```
+trace: waraq_query  {input: {query}}
+  ├── span: check_intent         {input: {query, path:[]}, output: {intent, status}}
+  ├── span: normalize_query      {input: {query, path:[]}, output: {query, language}}
+  ├── span: navigate_level_1     {input: {normalized_query, path:[...]}, output: {navigation_path, status}}
+  ├── span: navigate_level_N     {input: {normalized_query, path:[...]}, output: {leaf_metadata, status}}
+  └── span: generate_answer      {input: {query, sources, content_chars, leaf_count}, output: {answer_chars, citations}}
+  [output: {status, navigation_path, navigation_levels, answer_chars}]
+```
+
+---
+
+### Run instructions
+
+```
+# Install once
+pip install chainlit
+
+# Create .chainlit/config.toml (CORS for Vite dev server)
+# [server]
+# cors_allow_origins = ["http://localhost:5173", "http://localhost:4173"]
+
+# Terminal 1 — backend
+chainlit run chainlit_app.py --port 8000
+
+# Terminal 2 — frontend
+cd frontend && npm install && npm run dev
+```
+
+---
+
+### Design decisions
+
+- **`graph.astream()` over `graph.invoke()`** — native async generator yields after each node, enabling real-time status updates in Chainlit and per-node Langfuse spans without threads or queues.
+- **`asyncio.to_thread` for LLM generation calls** — `generate_answer` and `generate_greeting` make blocking HTTP calls to Ollama; running them in a thread pool prevents blocking the Chainlit event loop.
+- **`leaf_content` excluded from Langfuse spans** — can be tens of thousands of characters; metadata (titles, page ranges, char count) captures the same signal without bloating traces.
+- **Tracing never touches UX** — every Langfuse call is inside `try/except`; a Langfuse outage is invisible to the user.
+- **Per-session graph/index load** — simple and safe; avoids shared mutable state between sessions.
+
+---
+
+### Definition of done — Stage 7
+
+- [x] `chainlit_app.py` implemented with `@cl.on_chat_start` and `@cl.on_message`
+- [x] `waraq/observability/tracer.py` implemented with `get_langfuse`, `safe_span`, `safe_end`, `flush`
+- [x] `pyproject.toml` updated — `chainlit` added, `fastapi`/`uvicorn` removed
+- [x] Paths anchored to `Path(__file__).parent` (CWD-safe)
+- [ ] `pip install chainlit` on target machine
+- [ ] `npm install` in `frontend/`
+- [ ] `.chainlit/config.toml` created with CORS origins
+- [ ] End-to-end smoke test: send a query through the Vite frontend, verify response appears and Langfuse trace is recorded
