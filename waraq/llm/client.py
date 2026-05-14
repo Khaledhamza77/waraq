@@ -46,7 +46,7 @@ class SILMAClient:
         prompt: str,
         system: str = "",
         temperature: float = 0.1,
-        max_tokens: int = 512,
+        max_tokens: int = 2048,
     ) -> str:
         messages = []
         if system:
@@ -58,7 +58,7 @@ class SILMAClient:
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
-            extra_body={"num_ctx": 4096},
+            extra_body={"num_ctx": 32768},
         )
         return response.choices[0].message.content or ""
 
