@@ -240,3 +240,71 @@ When hooks are null (Stage 4 not yet run), `navigate_level_prompt` falls back to
 - [x] `waraq/navigation/prompts.py` extended with navigation prompts
 - [x] `tests/test_navigation.py` written with 8 tests
 - [ ] `pytest tests/test_navigation.py` passes all 8 tests against a live Ollama server
+
+---
+
+## Stage 6 — Response Generation ✅
+
+**Status:** Complete (code implemented; run `pytest tests/test_responder.py` once Ollama is serving)
+**Files:** `waraq/generation/responder.py`, `waraq/navigation/prompts.py` (extended), `tests/test_responder.py`
+
+---
+
+### What was built
+
+#### `waraq/generation/responder.py`
+Final answer generation module. Three public exports:
+
+- **`generate_answer(query, leaf_content, leaf_metadata) → dict`** — structured LLM call (`structured()` with Pydantic schema) that produces `{"answer": str, "citation": {"node_id", "title", "pages": {"start", "end"}}}`. Called by Stage 7 when `status == "found"`.
+- **`generate_greeting(query) → str`** — free-text LLM call (`complete()`) that returns a friendly Arabic introduction explaining what the system does. Called by Stage 7 when `status == "greeting"`.
+- **`NOT_FOUND_ANSWER: str`** — canned Arabic constant returned by Stage 7 when `status == "not_found"`. No LLM call.
+
+**Pydantic schemas** (internal to module):
+- `_Pages` — `start: int`, `end: int`
+- `_Citation` — `node_id: str`, `title: str`, `pages: _Pages`
+- `_AnswerResponse` — `answer: str`, `citation: _Citation`
+
+#### `waraq/navigation/prompts.py` (extended)
+Added Stage 6 prompts:
+- `answer_system()` — Arabic legal/accounting assistant system prompt enforcing source-only answers and JSON output
+- `answer_prompt(query, leaf_metadata, leaf_content)` — assembles query + source list (with page ranges and ids) + full leaf markdown content
+- `greeting_system()` — instructs the model to respond in the user's language and introduce the system's capabilities
+- `greeting_prompt(query)` — passes the raw query through unchanged
+
+#### `tests/test_responder.py`
+7 tests: 1 pure unit test (no Ollama), 6 integration tests:
+- `test_not_found_answer_is_nonempty_arabic` — unit, asserts the constant is a non-empty Arabic string
+- `test_generate_answer_returns_dict` — asserts non-empty dict returned
+- `test_generate_answer_has_answer_field` — asserts `answer` key is a non-trivial string
+- `test_generate_answer_has_citation_field` — asserts `citation` key with `node_id`, `title`, `pages`
+- `test_generate_answer_citation_pages_structure` — asserts `pages` has integer `start` and `end` keys
+- `test_generate_greeting_returns_nonempty_string` — Arabic greeting input
+- `test_generate_greeting_english_input` — English greeting input
+
+---
+
+### Bug fixed — `_clean_schema` in `waraq/llm/client.py`
+
+The original `inline()` helper stripped all dict keys named `"title"` — including property *names* inside a JSON schema `properties` object. This silently removed any Pydantic field named `title` from the schema sent to Ollama. The `_Citation` schema has a `title` field, so this bug would have caused it to be omitted from the structured output contract.
+
+Fix: when processing a `"properties"` key, iterate over property names without filtering, then strip `"title"` only from within each property's schema node. This correctly removes Pydantic's decorative title metadata while preserving fields whose name happens to be `title`.
+
+---
+
+### Design decisions
+
+- **`structured()` over `complete()` for answer generation** — guarantees valid JSON; consistent with Stage 5 approach. The plan mentioned `complete()` but structured output is strictly more reliable here.
+- **Greeting handled by responder, not_found is a constant** — greeting benefits from an LLM response that can adapt to the user's language; not_found is deterministic and needs no LLM call.
+- **`generate_answer` takes individual params, not the full `NavigationState`** — keeps the responder decoupled from the graph's internal state shape; Stage 7 unpacks what it needs.
+- **Full leaf content passed as-is** — no truncation. qwen3:8b via Ollama is configured with `num_ctx: 32768`; truncation deferred until it becomes a practical problem.
+- **Model note** — active model is `qwen3:8b` (not `silma-v1` as originally planned); `LLM_MODEL` env var controls this with no code changes needed.
+
+---
+
+### Definition of done — Stage 6
+
+- [x] `waraq/generation/responder.py` implemented with `generate_answer`, `generate_greeting`, `NOT_FOUND_ANSWER`
+- [x] `waraq/navigation/prompts.py` extended with Stage 6 prompts
+- [x] `_clean_schema` bug fixed in `waraq/llm/client.py`
+- [x] `tests/test_responder.py` written with 7 tests (1 unit + 6 integration)
+- [ ] `pytest tests/test_responder.py` passes against a live Ollama server

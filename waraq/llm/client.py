@@ -41,14 +41,21 @@ def _clean_schema(schema: dict[str, Any]) -> dict[str, Any]:
             if "$ref" in node:
                 ref_name = node["$ref"].split("/")[-1]
                 return inline(defs.get(ref_name, node))
-            return {k: inline(v) for k, v in node.items() if k != "title"}
+            result = {}
+            for k, v in node.items():
+                if k == "title":
+                    continue  # strip schema-level title metadata
+                if k == "properties":
+                    # preserve property names — they are field names, not metadata
+                    result[k] = {pk: inline(pv) for pk, pv in v.items()}
+                else:
+                    result[k] = inline(v)
+            return result
         if isinstance(node, list):
             return [inline(i) for i in node]
         return node
 
-    cleaned = inline(schema)
-    cleaned.pop("title", None)
-    return cleaned
+    return inline(schema)
 
 
 class SILMAClient:
