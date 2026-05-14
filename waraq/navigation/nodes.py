@@ -140,6 +140,13 @@ def navigate_level(state: NavigationState, config: RunnableConfig) -> dict[str, 
         schema=NavigationSelection,
     )
     selected_ids: list[str] = result.get("selected_ids") or []
+    if not selected_ids:
+        # fallback: model used a different key — grab the first list-of-strings found
+        for v in result.values():
+            if isinstance(v, list) and v and all(isinstance(x, str) for x in v):
+                selected_ids = v
+                log.debug("  selected_ids missing; using fallback key with value %s", v)
+                break
     reasoning: str = result.get("reasoning", "")
 
     log.debug("  llm selected: %s", selected_ids)

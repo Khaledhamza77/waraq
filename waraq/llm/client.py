@@ -1,9 +1,8 @@
 import json
 import logging
 import os
+import re
 from typing import Any
-
-log = logging.getLogger(__name__)
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -11,8 +10,12 @@ from pydantic import BaseModel
 
 load_dotenv()
 
+log = logging.getLogger(__name__)
+
 _BASE_URL = os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
 _MODEL = os.getenv("LLM_MODEL", "silma-v1")
+
+_THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 
 def _clean_schema(schema: dict[str, Any]) -> dict[str, Any]:
@@ -64,7 +67,8 @@ class SILMAClient:
             max_tokens=max_tokens,
             extra_body={"num_ctx": 32768},
         )
-        return response.choices[0].message.content or ""
+        raw = response.choices[0].message.content or ""
+        return _THINK_RE.sub("", raw).strip()
 
     def structured(
         self,
@@ -86,14 +90,14 @@ class SILMAClient:
         if schema is None:
             response_format: dict[str, Any] = {"type": "json_object"}
         else:
-            raw = (
+            raw_schema = (
                 schema.model_json_schema() if not isinstance(schema, dict) else dict(schema)
             )
             response_format = {
                 "type": "json_schema",
                 "json_schema": {
                     "name": "result",
-                    "schema": _clean_schema(raw),
+                    "schema": _clean_schema(raw_schema),
                 },
             }
 
@@ -105,13 +109,14 @@ class SILMAClient:
                 response_format=response_format,
                 extra_body={"num_ctx": 32768},
             )
-            content = response.choices[0].message.content or "{}"
+            raw = response.choices[0].message.content or "{}"
+            content = _THINK_RE.sub("", raw).strip()
             try:
                 return json.loads(content)
             except json.JSONDecodeError as exc:
                 log.warning(
                     "structured(): JSON decode error on attempt %d/2: %s | raw: %.200s",
-                    attempt + 1, exc, content,
+                    attempt + 1, exc, raw,
                 )
         log.error("structured(): failed to decode JSON after 2 attempts, returning {}")
         return {}
