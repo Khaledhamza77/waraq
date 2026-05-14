@@ -97,24 +97,26 @@ def _run_full(graph_config, query: str) -> dict:
         log.debug("── Responder output ───────────────────────────────────────")
         log.debug("  answer (first 300 chars):")
         log.debug("    %s", str(response.get("answer", ""))[:300])
-        cit = response.get("citation") or {}
-        log.debug("  citation node_id : %s", cit.get("node_id"))
-        log.debug("  citation title   : %s", cit.get("title"))
-        log.debug("  citation pages   : %s", cit.get("pages"))
+        for cit in response.get("citations") or []:
+            log.debug(
+                "  citation : [%s] %s  (pp. %s–%s)",
+                cit.get("node_id"), cit.get("title"),
+                cit.get("pages", {}).get("start"), cit.get("pages", {}).get("end"),
+            )
 
     elif status == "greeting":
         log.debug("── Greeting → responder ───────────────────────────────────")
         greeting_text = generate_greeting(nav["original_query"])
-        response = {"answer": greeting_text, "citation": None}
+        response = {"answer": greeting_text, "citations": []}
         log.debug("  greeting (first 300 chars):")
         log.debug("    %s", greeting_text[:300])
 
     elif status == "not_found":
-        response = {"answer": NOT_FOUND_ANSWER, "citation": None}
+        response = {"answer": NOT_FOUND_ANSWER, "citations": []}
         log.debug("── not_found: canned response returned, no LLM call")
 
     else:  # rejected
-        response = {"answer": "", "citation": None}
+        response = {"answer": "", "citations": []}
         log.debug("── rejected: pipeline stopped at intent check, no response")
 
     return {"nav": nav, "response": response}
@@ -127,17 +129,19 @@ def _assert_answer_quality(result: dict) -> None:
     assert isinstance(response.get("answer"), str), "answer must be a string"
     assert len(response["answer"]) > 20, "answer must be non-trivial"
 
-    cit = response.get("citation")
-    assert isinstance(cit, dict), "citation must be a dict"
-    assert cit.get("node_id"), "citation.node_id must be non-empty"
-    assert cit.get("title"), "citation.title must be non-empty"
+    cits = response.get("citations")
+    assert isinstance(cits, list), "citations must be a list"
+    assert len(cits) >= 1, "citations must have at least one entry"
 
-    pages = cit.get("pages", {})
-    assert isinstance(pages, dict), "citation.pages must be a dict"
-    assert isinstance(pages.get("start"), int), "pages.start must be an int"
-    assert isinstance(pages.get("end"), int), "pages.end must be an int"
-    assert pages["start"] >= 1, "pages.start must be a valid page number"
-    assert pages["end"] >= pages["start"], "pages.end must be >= pages.start"
+    for cit in cits:
+        assert cit.get("node_id"), "citation.node_id must be non-empty"
+        assert cit.get("title"), "citation.title must be non-empty"
+        pages = cit.get("pages", {})
+        assert isinstance(pages, dict), "citation.pages must be a dict"
+        assert isinstance(pages.get("start"), int), "pages.start must be an int"
+        assert isinstance(pages.get("end"), int), "pages.end must be an int"
+        assert pages["start"] >= 1, "pages.start must be a valid page number"
+        assert pages["end"] >= pages["start"], "pages.end must be >= pages.start"
 
 
 # ── Known-answer end-to-end tests ─────────────────────────────────────────────

@@ -63,23 +63,26 @@ def test_generate_answer_has_answer_field(answer_result):
 
 
 @pytest.mark.integration
-def test_generate_answer_has_citation_field(answer_result):
-    assert "citation" in answer_result, "result must have 'citation' key"
-    cit = answer_result["citation"]
-    assert isinstance(cit, dict)
+def test_generate_answer_has_citations_field(answer_result):
+    assert "citations" in answer_result, "result must have 'citations' key"
+    cits = answer_result["citations"]
+    assert isinstance(cits, list), "citations must be a list"
+    assert len(cits) >= 1, "citations must have at least one entry"
+    cit = cits[0]
     assert "node_id" in cit
     assert "title" in cit
     assert "pages" in cit
 
 
 @pytest.mark.integration
-def test_generate_answer_citation_pages_structure(answer_result):
-    assert "citation" in answer_result, "result must have 'citation' key"
-    pages = answer_result["citation"].get("pages", {})
-    assert isinstance(pages, dict), "pages must be a dict"
-    assert "start" in pages and "end" in pages
-    assert isinstance(pages["start"], int)
-    assert isinstance(pages["end"], int)
+def test_generate_answer_citations_pages_structure(answer_result):
+    assert "citations" in answer_result, "result must have 'citations' key"
+    for cit in answer_result["citations"]:
+        pages = cit.get("pages", {})
+        assert isinstance(pages, dict), "pages must be a dict"
+        assert "start" in pages and "end" in pages
+        assert isinstance(pages["start"], int)
+        assert isinstance(pages["end"], int)
 
 
 @pytest.mark.integration

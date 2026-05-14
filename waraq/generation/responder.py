@@ -23,14 +23,16 @@ class _AnswerResponse(BaseModel):
     answer: str
 
 
-def _build_citation(leaf_metadata: list[dict]) -> dict[str, Any]:
-    """Build citation dict from the first (primary) leaf returned by navigation."""
-    m = leaf_metadata[0]
-    return {
-        "node_id": m["id"],
-        "title": m["title"],
-        "pages": {"start": m["start_page"], "end": m["end_page"]},
-    }
+def _build_citations(leaf_metadata: list[dict]) -> list[dict[str, Any]]:
+    """Build one citation entry per leaf returned by navigation."""
+    return [
+        {
+            "node_id": m["id"],
+            "title": m["title"],
+            "pages": {"start": m["start_page"], "end": m["end_page"]},
+        }
+        for m in leaf_metadata
+    ]
 
 
 def generate_answer(
@@ -38,7 +40,7 @@ def generate_answer(
     leaf_content: str,
     leaf_metadata: list[dict],
 ) -> dict[str, Any]:
-    """Return {"answer": str, "citation": {"node_id", "title", "pages": {"start", "end"}}}."""
+    """Return {"answer": str, "citations": [{"node_id", "title", "pages": {"start", "end"}}, ...]}."""
     result = get_client().structured(
         prompt=answer_prompt(query, leaf_metadata, leaf_content),
         system=answer_system(),
@@ -49,7 +51,7 @@ def generate_answer(
         return {}
     return {
         "answer": result.get("answer", ""),
-        "citation": _build_citation(leaf_metadata),
+        "citations": _build_citations(leaf_metadata),
     }
 
 
