@@ -1,102 +1,71 @@
 uv run pytest tests/test_navigation.py -v -s --log-cli-level=DEBUG --log-cli-format="%(name)s %(message)s"
 
 # Error in navigation test pytest
-________________________________________________________________________ test_inventory_standard_objective ________________________________________________________________________
+tests\test_nav_responder.py:158: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
 
-graph_config = (<langgraph.graph.state.CompiledStateGraph object at 0x000002E0A61E4770>, {'configurable': {'index': {'document': {'la..., ...]}, 'markdown_dir': WindowsPath('C:/Users/KhaledIbrahim/Documents/playground/waraq/data/parsed/markdown/pages')}})
+result = {'nav': {'intent': 'valid', 'language': 'ar', 'leaf_content': "<a id='6793ef3a-d87e-442f-9177-0b93451f12ef'></a>\n\n١٢...e': 127, ...}, {'chunk_ids': [], 'end_page': 129, 'id': 'section_5_16', 'start_page': 128, ...}], ...}, 'response': {}}
 
-    def test_inventory_standard_objective(graph_config):
-        """Objective of inventory standard → anywhere in section_5."""
-        result = _run(graph_config, "ما هو هدف معيار المحاسبة المصري رقم 2 الخاص بالمخزون؟")
->       assert result["status"] == "found"
-E       AssertionError: assert 'not_found' == 'found'
-E         
-E         - found
-E         + not_found
+    def _assert_answer_quality(result: dict) -> None:
+        """Assert response shape and basic quality for a 'found' result."""
+        response = result["response"]
+    
+>       assert isinstance(response.get("answer"), str), "answer must be a string"
+E       AssertionError: answer must be a string
+E       assert False
+E        +  where False = isinstance(None, str)
+E        +    where None = <built-in method get of dict object at 0x000001E6F4483280>('answer')
+E        +      where <built-in method get of dict object at 0x000001E6F4483280> = {}.get
 
-tests\test_navigation.py:91: AssertionError
--------------------------------------------------------------------------------- Captured log call --------------------------------------------------------------------------------
+tests\test_nav_responder.py:127: AssertionError
+------------------------------------------------------------------------------------------------------------------------------------------------- Captured log call --------------------------------------------------------------------------------------------------------------------------------------------------
+DEBUG    test_nav_responder:test_nav_responder.py:53 
+DEBUG    test_nav_responder:test_nav_responder.py:54 ╔══════════════════════════════════════════════════════════╗
+DEBUG    test_nav_responder:test_nav_responder.py:55   QUERY: كيف يتم قياس المخزون وفق معايير المحاسبة المصرية؟
+DEBUG    test_nav_responder:test_nav_responder.py:56 ╚══════════════════════════════════════════════════════════╝
 DEBUG    waraq.navigation.nodes:nodes.py:115 ── navigate_level ──────────────────────────
 DEBUG    waraq.navigation.nodes:nodes.py:116   path so far : [root]
 DEBUG    waraq.navigation.nodes:nodes.py:127   candidates  : ['section_1 (الصفحات التمهيدية)', 'section_2 (المقدمة)', 'section_3 (إطار إعداد وعرض القوائم المالية)', 'section_4 (معيار المحاسبة المصري رقم (1) عرض القوائم المالية)', 'section_5 (معيار المحاسبة رقم (2) المخزون)', 'section_6 (معيار المحاسبة المصري رقم (4) قائمة التدفقات النقدية)', 'section_7 (معيار المحاسبة المصري رقم (5) السياسات المحاسبية والتغييرات في التقديرات المحاسبية والأخطاء)', 'section_8 (معيار المحاسبة المصري رقم (7) الأحداث التي تقع بعد الفترة المالية)', 'section_9 (معيار المحاسبة المصري رقم (10) الأصول الثابتة وإهلاكاتها)']
 DEBUG    waraq.navigation.nodes:nodes.py:152   llm selected: ['section_5']
-DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : القسم 5 يحمل عنوانًا مباشرًا 'معيار المحاسبة رقم (2) المخزون' ويغطي جميع الجوانب المتعلقة بقياس وتسجيل المخزون وفقًا لمعايير المحاسبة المصرية، بما في ذلك الغرض من المعيار الذي يُحدد طرق قياس التكلفة وتطبيق مبدأ القيمة الأقل بين التكلفة والقيمة البيعية الصافية، مما يجعله الأقرب للسؤال.
+DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : القسم 5 يحمل عنوانًا مباشرًا 'معيار المحاسبة رقم (2) المخزون' ويغطي طرق قياس التكلفة وتحديد القيمة الأقل بين التكلفة والقيمة البيعية الصافية، وهو ما يتوافق مباشرة مع سؤال المستخدم حول طريقة قياس المخزون وفقًا للمعايير المحاسبية المصرية.
 DEBUG    waraq.navigation.nodes:nodes.py:171   node types  : 0 leaf(s), 1 non-leaf(s)
 DEBUG    waraq.navigation.nodes:nodes.py:180   → descending into 'section_5' (معيار المحاسبة رقم (2) المخزون)
 DEBUG    waraq.navigation.nodes:nodes.py:115 ── navigate_level ──────────────────────────
 DEBUG    waraq.navigation.nodes:nodes.py:116   path so far : ['section_5']
 DEBUG    waraq.navigation.nodes:nodes.py:127   candidates  : ['section_5_1 (فهرس ومقدمة)', 'section_5_2 (هدف المعيار)', 'section_5_3 (نطاق المعيار)', 'section_5_4 (تعريفات)', 'section_5_5 (قياس المخزون)', 'section_5_6 (تكلفة المخزون)', 'section_5_7 (تكاليف الشراء)', 'section_5_8 (تكاليف التشكيل)', 'section_5_9 (التكاليف الأخرى)', 'section_5_10 (تكلفة المخزون في المنشآت الخدمية)', 'section_5_11 (تكلفة المنتجات الزراعية المحصودة من الأصول البيولوجية)', 'section_5_12 (أساليب قياس التكلفة)', 'section_5_13 (طرق حساب التكلفة)', 'section_5_14 (صافي القيمة البيعية)', 'section_5_15 (الاعتراف بالمصروف)', 'section_5_16 (الإفصاح)']
-WARNING  waraq.llm.client:client.py:117 structured(): JSON decode error on attempt 1/2: Expecting value: line 1 column 1 (char 0) | raw:  ihtiya
-</think>
-
-{
-  "sections": ["5_14", "5_15", "5_16"]
-}
-WARNING  waraq.llm.client:client.py:117 structured(): JSON decode error on attempt 2/2: Expecting value: line 1 column 1 (char 0) | raw: ですよね
-
-Okay, let's tackle this query. The user is asking about the cost of agricultural products harvested from biological assets, specifically how to measure their cost after harvest. 
-
-First, I need 
-ERROR    waraq.llm.client:client.py:121 structured(): failed to decode JSON after 2 attempts, returning {}
-DEBUG    waraq.navigation.nodes:nodes.py:152   llm selected: []
+DEBUG    waraq.navigation.nodes:nodes.py:148   selected_ids missing; using fallback key with value ['5_14', '5_15', '5_16']
+DEBUG    waraq.navigation.nodes:nodes.py:152   llm selected: ['5_14', '5_15', '5_16']
 DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : 
-DEBUG    waraq.navigation.nodes:nodes.py:156   → selected_ids is empty, not_found
+DEBUG    waraq.navigation.nodes:nodes.py:171   node types  : 3 leaf(s), 0 non-leaf(s)
+DEBUG    waraq.navigation.nodes:nodes.py:203   → found 3 leaf(s): ['section_5_14', 'section_5_15', 'section_5_16']
+DEBUG    test_nav_responder:test_nav_responder.py:71 ── Navigation result ──────────────────────────────────────
+DEBUG    test_nav_responder:test_nav_responder.py:72   status          : found
+DEBUG    test_nav_responder:test_nav_responder.py:73   intent          : valid
+DEBUG    test_nav_responder:test_nav_responder.py:74   language        : ar
+DEBUG    test_nav_responder:test_nav_responder.py:75   normalized query: ما هي طريقة قياس المخزون وفقًا للمعايير المحاسبية المصرية؟
+DEBUG    test_nav_responder:test_nav_responder.py:76   navigation path : ['section_5', 'section_5_14', 'section_5_15', 'section_5_16']
+DEBUG    test_nav_responder:test_nav_responder.py:78   leaf            : [section_5_14] صافي القيمة البيعية  (pp. 126–127)
+DEBUG    test_nav_responder:test_nav_responder.py:78   leaf            : [section_5_15] الاعتراف بالمصروف  (pp. 127–128)
+DEBUG    test_nav_responder:test_nav_responder.py:78   leaf            : [section_5_16] الإفصاح  (pp. 128–129)
+DEBUG    test_nav_responder:test_nav_responder.py:82   content length  : 10979 chars
+DEBUG    test_nav_responder:test_nav_responder.py:87 ── Sending to responder ───────────────────────────────────
+DEBUG    test_nav_responder:test_nav_responder.py:88   query (normalized): ما هي طريقة قياس المخزون وفقًا للمعايير المحاسبية المصرية؟
+DEBUG    test_nav_responder:test_nav_responder.py:89   sources passed    : 3 leaf(s)
+WARNING  waraq.llm.client:client.py:133 structured(): JSON decode error on attempt 1/2: Expecting value: line 1 column 1 (char 0) | raw: öz
 
-___________________________________________________________________________ test_inventory_measurement ____________________________________________________________________________
+**الإجابة:**
 
-graph_config = (<langgraph.graph.state.CompiledStateGraph object at 0x000002E0A61E4770>, {'configurable': {'index': {'document': {'la..., ...]}, 'markdown_dir': WindowsPath('C:/Users/KhaledIbrahim/Documents/playground/waraq/data/parsed/markdown/pages')}})
+بناءً على النص المقدم، يمكن توضيح أن **قيمة المخزون المعترف به كمصروف خلال الفترة** تشمل مجموعة من العناصر التي تختلف حسب طبيعة المنشأة وطريقة محاسبتها. إليك التفاصيل المفصّلة:
 
-    def test_inventory_measurement(graph_config):
-        """Inventory measurement → anywhere in section_5."""
-        result = _run(graph_config, "كيف يتم قياس المخزون وفق معايير المحاسبة المصرية؟")
->       assert result["status"] == "found"
-E       AssertionError: assert 'not_found' == 'found'
-E         
-E         - found
-E         + not_found
+### 
+WARNING  waraq.llm.client:client.py:133 structured(): JSON decode error on attempt 2/2: Expecting value: line 1 column 1 (char 0) | raw: ív
 
-tests\test_navigation.py:67: AssertionError
--------------------------------------------------------------------------------- Captured log call --------------------------------------------------------------------------------
-DEBUG    waraq.navigation.nodes:nodes.py:115 ── navigate_level ──────────────────────────
-DEBUG    waraq.navigation.nodes:nodes.py:116   path so far : [root]
-DEBUG    waraq.navigation.nodes:nodes.py:127   candidates  : ['section_1 (الصفحات التمهيدية)', 'section_2 (المقدمة)', 'section_3 (إطار إعداد وعرض القوائم المالية)', 'section_4 (معيار المحاسبة المصري رقم (1) عرض القوائم المالية)', 'section_5 (معيار المحاسبة رقم (2) المخزون)', 'section_6 (معيار المحاسبة المصري رقم (4) قائمة التدفقات النقدية)', 'section_7 (معيار المحاسبة المصري رقم (5) السياسات المحاسبية والتغييرات في التقديرات المحاسبية والأخطاء)', 'section_8 (معيار المحاسبة المصري رقم (7) الأحداث التي تقع بعد الفترة المالية)', 'section_9 (معيار المحاسبة المصري رقم (10) الأصول الثابتة وإهلاكاتها)']
-DEBUG    waraq.navigation.nodes:nodes.py:152   llm selected: ['section_5']
-DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : القسم 5 يتناول بشكل مباشر طريقة قياس المخزون وفقًا لمعايير المحاسبة المصرية، بما في ذلك طرق التكلفة وتطبيق مبدأ القيمة الأقل بين التكلفة والقيمة البيعية الصافية، وهو ما يتوافق تمامًا مع سؤال المستخدم.
-DEBUG    waraq.navigation.nodes:nodes.py:171   node types  : 0 leaf(s), 1 non-leaf(s)
-DEBUG    waraq.navigation.nodes:nodes.py:180   → descending into 'section_5' (معيار المحاسبة رقم (2) المخزون)
-DEBUG    waraq.navigation.nodes:nodes.py:115 ── navigate_level ──────────────────────────
-DEBUG    waraq.navigation.nodes:nodes.py:116   path so far : ['section_5']
-DEBUG    waraq.navigation.nodes:nodes.py:127   candidates  : ['section_5_1 (فهرس ومقدمة)', 'section_5_2 (هدف المعيار)', 'section_5_3 (نطاق المعيار)', 'section_5_4 (تعريفات)', 'section_5_5 (قياس المخزون)', 'section_5_6 (تكلفة المخزون)', 'section_5_7 (تكاليف الشراء)', 'section_5_8 (تكاليف التشكيل)', 'section_5_9 (التكاليف الأخرى)', 'section_5_10 (تكلفة المخزون في المنشآت الخدمية)', 'section_5_11 (تكلفة المنتجات الزراعية المحصودة من الأصول البيولوجية)', 'section_5_12 (أساليب قياس التكلفة)', 'section_5_13 (طرق حساب التكلفة)', 'section_5_14 (صافي القيمة البيعية)', 'section_5_15 (الاعتراف بالمصروف)', 'section_5_16 (الإفصاح)']
-WARNING  waraq.llm.client:client.py:117 structured(): JSON decode error on attempt 1/2: Expecting value: line 1 column 1 (char 0) | raw:  justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 10,
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    flexDirectio
-WARNING  waraq.llm.client:client.py:117 structured(): JSON decode error on attempt 2/2: Expecting value: line 1 column 1 (char 0) | raw: เตรียมคำตอบ:
-</think>
 
-{
-  "sections": ["5_14", "5_15", "5_16"]
-}
-ERROR    waraq.llm.client:client.py:121 structured(): failed to decode JSON after 2 attempts, returning {}
-DEBUG    waraq.navigation.nodes:nodes.py:152   llm selected: []
-DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : 
-DEBUG    waraq.navigation.nodes:nodes.py:156   → selected_ids is empty, not_found
-_____________________________________________________________________________ test_income_recognition _____________________________________________________________________________
-
-graph_config = (<langgraph.graph.state.CompiledStateGraph object at 0x000002E0A61E4770>, {'configurable': {'index': {'document': {'la..., ...]}, 'markdown_dir': WindowsPath('C:/Users/KhaledIbrahim/Documents/playground/waraq/data/parsed/markdown/pages')}})
-
-    def test_income_recognition(graph_config):
-        """Income recognition → section_3_5 or section_4."""
-        result = _run(graph_config, "متى يتم الاعتراف بالدخل في القوائم المالية؟")
->       assert result["status"] == "found"
-E       AssertionError: assert 'not_found' == 'found'
-E         
-E         - found
-E         + not_found
-
-tests\test_navigation.py:83: AssertionError
+ERROR    waraq.llm.client:client.py:137 structured(): failed to decode JSON after 2 attempts, returning {}
+ERROR    waraq.generation.responder:responder.py:50 generate_answer: structured() returned empty dict
+DEBUG    test_nav_responder:test_nav_responder.py:97 ── Responder output ───────────────────────────────────────
+DEBUG    test_nav_responder:test_nav_responder.py:98   answer (first 300 chars):
+DEBUG    test_nav_responder:test_nav_responder.py:99     
+DEBUG    test_nav_responder:test_nav_responder.py:101   citation node_id : None
+DEBUG    test_nav_responder:test_nav_responder.py:102   citation title   : None
+DEBUG    test_nav_responder:test_nav_responder.py:103   citation pages   : None
