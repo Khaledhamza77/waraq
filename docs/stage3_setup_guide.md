@@ -1,146 +1,64 @@
-# Stage 3 Setup Guide — SILMA-9B via vLLM on WSL2
-
-This guide covers everything needed to get SILMA-9B running via vLLM inside WSL2, verify it from Windows, and run the Stage 3 smoke test.
+# Stage 3 Setup Guide — SILMA-9B via Ollama
 
 ---
 
 ## Prerequisites
 
-### Hardware
-- NVIDIA GPU with at least **16 GB VRAM** (SILMA-9B in bfloat16 needs ~18 GB; use `--gpu-memory-utilization 0.80` on a 16 GB card)
-- Recommended: RTX 3090 / 4090, or any A-series card
-
-### Software (Windows side)
-- WSL2 enabled (Windows 10 build 19041+)
-- NVIDIA driver ≥ 527.41 installed on Windows — this exposes the GPU to WSL2 automatically
-- `uv` installed: `pip install uv` or via `winget install astral-sh.uv`
-
-### Software (WSL2 side)
-- Ubuntu 22.04 or 24.04 recommended
-- CUDA 12.1+ toolkit (`nvcc --version` to verify)
-- Python 3.11+
+- Ollama installed on your machine ([ollama.com](https://ollama.com))
+- The model already pulled (`ollama list` to confirm)
 
 ---
 
-## Step 1 — Verify GPU is visible in WSL2
-
-Open a WSL2 terminal and run:
+## Step 1 — Find your exact model name
 
 ```bash
-nvidia-smi
+ollama list
 ```
 
-You should see your GPU listed. If not, update your Windows NVIDIA driver (the driver ships CUDA for WSL2 — do not install CUDA separately inside WSL2 for the driver layer).
+Copy the name from the `NAME` column exactly as shown (e.g. `silma-v1`, `qwen3:8b`). Set it in `.env`:
 
----
-
-## Step 2 — Clone / access the repo in WSL2
-
-The repo lives on your Windows filesystem. Access it from WSL2 at:
-
-```bash
-cd /mnt/c/Users/NEW\ LAP/Documents/repositories/waraq
 ```
-
-Or clone a fresh copy inside WSL2's own filesystem for better I/O performance (optional):
-
-```bash
-git clone <your-remote-url> ~/waraq
-cd ~/waraq
+LLM_MODEL=<name from ollama list>
 ```
 
 ---
 
-## Step 3 — Install Python dependencies in WSL2
+## Step 2 — Start Ollama
+
+Ollama usually runs as a background service after install. Check if it's already up:
 
 ```bash
-# Install uv if not already present
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source ~/.bashrc   # or restart terminal
-
-# Create venv and install project + vLLM server extras
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[server]"
+curl http://localhost:11434/api/tags
 ```
 
-> `[server]` installs `vllm>=0.4.0` in addition to the base project dependencies.
-
-If uv's vllm install fails due to CUDA version mismatch, install vLLM directly:
+If you get a JSON response with your models listed, it's running. If not, start it:
 
 ```bash
-pip install vllm --extra-index-url https://download.pytorch.org/whl/cu121
+ollama serve
 ```
 
 ---
 
-## Step 4 — Copy `.env` to WSL2 side (if running from WSL2 filesystem)
+## Step 3 — Install Python dependencies (Windows)
 
-If you cloned inside WSL2, create a `.env` from the example:
-
-```bash
-cp .env.example .env
-# Edit VLLM_BASE_URL, VLLM_MODEL if needed (defaults are correct for local setup)
-```
-
----
-
-## Step 5 — Start the vLLM server
-
-```bash
-bash scripts/start_vllm.sh
-```
-
-The first run downloads SILMA-9B from Hugging Face (~18 GB). Subsequent starts are fast.
-
-You should see output ending with:
-
-```
-INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
-```
-
-**Leave this terminal running.**
-
-### Optional — GPU memory tuning
-
-If you have a 16 GB card and the server OOMs:
-
-```bash
-bash scripts/start_vllm.sh --gpu-memory-utilization 0.80
-```
-
-If you want a shorter max context to save memory:
-
-```bash
-bash scripts/start_vllm.sh --max-model-len 4096
-```
-
----
-
-## Step 6 — Verify the server from Windows (optional quick check)
-
-Open a PowerShell window on Windows and run:
+From the project root in PowerShell:
 
 ```powershell
-Invoke-RestMethod -Uri http://localhost:8001/v1/models -Method Get
+uv sync
 ```
 
-You should see the model listed. WSL2 automatically bridges port 8001 to Windows localhost.
+Or if not using uv:
+
+```powershell
+pip install -e .
+```
 
 ---
 
-## Step 7 — Run the Stage 3 smoke test
-
-From your **Windows** PowerShell (in the project directory):
+## Step 4 — Run the smoke test
 
 ```powershell
-.venv\bin\python scripts\test_vllm.py
-```
-
-Or if you're running from inside WSL2:
-
-```bash
-python scripts/test_vllm.py
+python scripts/test_llm.py
 ```
 
 Expected output:
@@ -164,23 +82,17 @@ All Stage 3 tests passed.
 
 ## Troubleshooting
 
-| Symptom | Cause | Fix |
-|---|---|---|
-| `nvidia-smi` not found in WSL2 | GPU not exposed | Update Windows NVIDIA driver to ≥ 527.41 |
-| `CUDA out of memory` at startup | VRAM too small | Lower `--gpu-memory-utilization` or `--max-model-len` |
-| `Connection refused` on port 8001 | Server not started | Run `bash scripts/start_vllm.sh` in WSL2 first |
-| `JSONDecodeError` from `structured()` | Model not following schema | Ensure vLLM version ≥ 0.4.0 (guided decoding support); check `guided_json` in `extra_body` |
-| Import error for `waraq` | Package not installed | Run `uv pip install -e .` in the project root |
-| Slow first response | Model cold-start / KV cache warming | Normal; subsequent calls are fast |
+| Symptom | Fix |
+|---|---|
+| `Connection refused` on port 11434 | Run `ollama serve` |
+| `model not found` error | Check `LLM_MODEL` in `.env` matches `ollama list` exactly |
+| `JSONDecodeError` from `structured()` | Model may not support `json_schema` format — try setting `LLM_MODEL=qwen3:8b` which has stronger instruction-following |
+| Import error for `waraq` | Run `pip install -e .` from project root |
 
 ---
 
-## What's next — Stage 4
+## Model choice
 
-Once the smoke test passes, Stage 4 (summary generation) can run. It reads `data/index.json`, extracts text for each leaf's page range from `data/parsed/output.json`, calls `client.complete()` to generate Arabic hooks, and writes them back into `data/index.json`.
+Both models available should work. `qwen3:8b` tends to have stronger structured output compliance. SILMA is the target for Arabic regulatory content.
 
-Run (once implemented):
-
-```bash
-python scripts/run_summary_gen.py
-```
+You can switch models at any time by changing `LLM_MODEL` in `.env` — no code changes needed.

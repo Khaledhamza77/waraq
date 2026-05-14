@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Any
 
@@ -7,13 +8,14 @@ from pydantic import BaseModel
 
 load_dotenv()
 
-_BASE_URL = os.getenv("VLLM_BASE_URL", "http://localhost:8001/v1")
-_MODEL = os.getenv("VLLM_MODEL", "SILMA-AI/SILMA-9B-Instruct-v1")
+_BASE_URL = os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
+_MODEL = os.getenv("LLM_MODEL", "silma-v1")
 
 
 class SILMAClient:
     def __init__(self, base_url: str = _BASE_URL, model: str = _MODEL) -> None:
-        self._client = OpenAI(base_url=base_url, api_key="not-needed")
+        # Ollama's OpenAI-compatible endpoint; api_key is required by the client but unused
+        self._client = OpenAI(base_url=base_url, api_key="ollama")
         self._model = model
 
     def complete(
@@ -41,32 +43,38 @@ class SILMAClient:
         schema: type[BaseModel] | dict[str, Any] | None = None,
         temperature: float = 0.1,
     ) -> dict[str, Any]:
-        """Call SILMA with guided JSON decoding. schema can be a Pydantic model class or a raw JSON schema dict."""
+        """Call the model with structured JSON output.
+
+        Uses Ollama's json_schema response_format (0.5+) when a schema is
+        provided, otherwise falls back to json_object mode.
+        """
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
         if schema is None:
-            json_schema = None
-        elif isinstance(schema, dict):
-            json_schema = schema
+            response_format: dict[str, Any] = {"type": "json_object"}
         else:
-            json_schema = schema.model_json_schema()
-
-        extra_body: dict[str, Any] = {}
-        if json_schema is not None:
-            extra_body["guided_json"] = json_schema
+            json_schema = (
+                schema.model_json_schema() if not isinstance(schema, dict) else schema
+            )
+            response_format = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "result",
+                    "schema": json_schema,
+                    "strict": True,
+                },
+            }
 
         response = self._client.chat.completions.create(
             model=self._model,
             messages=messages,
             temperature=temperature,
-            extra_body=extra_body or None,
+            response_format=response_format,
         )
         content = response.choices[0].message.content or "{}"
-
-        import json
         return json.loads(content)
 
 

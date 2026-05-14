@@ -7,7 +7,7 @@
 
 **waraq** is an agentic Arabic document navigation system built for Egyptian accounting regulation. It uses hierarchical index traversal powered by SILMA-9B to navigate a structured regulatory document and return precise, cited answers without embeddings or vector search.
 
-**Stack:** Python · FastAPI · LangGraph · vLLM · SILMA-9B · LandingAI ADE · Langfuse · uv
+**Stack:** Python · FastAPI · LangGraph · Ollama · SILMA-9B · LandingAI ADE · Langfuse · uv
 
 ---
 
@@ -27,11 +27,11 @@ waraq/
 │   ├── navigation/
 │   │   ├── graph.py            # Stage 5: LangGraph navigation system
 │   │   ├── nodes.py            # individual graph nodes
-│   │   └── prompts.py          # all SILMA prompts in one place
+│   │   └── prompts.py          # all prompts in one place
 │   ├── generation/
 │   │   └── responder.py        # Stage 6: final answer generation
 │   ├── llm/
-│   │   └── client.py           # shared vLLM/SILMA client, structured output helpers
+│   │   └── client.py           # shared Ollama client, structured output helpers
 │   ├── observability/
 │   │   └── tracer.py           # Stage 8: Langfuse integration
 │   └── api/
@@ -40,7 +40,7 @@ waraq/
 ├── scripts/
 │   ├── run_ingestion.py        # one-shot: parse PDF → save JSON
 │   ├── run_summary_gen.py      # one-shot: enrich index.json with summaries
-│   └── start_vllm.sh           # convenience script to start vLLM server
+│   └── test_llm.py             # Stage 3 smoke test
 ├── tests/
 │   └── test_navigation.py      # Stage 5 smoke tests
 ├── pyproject.toml              # uv project file
@@ -188,44 +188,35 @@ This is the master document. Every other stage reads from or writes to this file
 
 ---
 
-## Stage 3 — SILMA-9B via vLLM
+## Stage 3 — SILMA-9B via Ollama
 
-**Goal:** SILMA-9B is running locally via vLLM, serving an OpenAI-compatible endpoint, and responding correctly to a test prompt with structured JSON output.
+**Goal:** SILMA-9B is running locally via Ollama, serving an OpenAI-compatible endpoint, and responding correctly to a test prompt with structured JSON output.
 
-**Definition of done:** A test script hits the vLLM endpoint, sends a simple Arabic prompt requesting JSON output, and receives a valid parsed JSON response.
+**Definition of done:** A test script hits the Ollama endpoint, sends a simple Arabic prompt requesting JSON output, and receives a valid parsed JSON response.
 
 **Setup:**
 
-Install vLLM via uv:
-```toml
-# pyproject.toml
-[project]
-dependencies = [
-    "vllm>=0.4.0",
-    "openai>=1.0.0",
-    ...
-]
+Ollama must be installed and the model pulled before running anything:
+```bash
+ollama pull <model-name>   # run: ollama list, to confirm the exact name
+ollama serve               # starts the server on http://localhost:11434
 ```
 
-Start script:
-```bash
-# scripts/start_vllm.sh
-uv run vllm serve \
-  SILMA-AI/SILMA-9B-Instruct-v1 \
-  --dtype bfloat16 \
-  --max-model-len 8192 \
-  --gpu-memory-utilization 0.90 \
-  --port 8001
-```
+No extra Python dependencies are needed — the existing `openai` package points to Ollama's OpenAI-compatible endpoint at `http://localhost:11434/v1`.
 
 **Client wrapper** (`waraq/llm/client.py`):
-- Wraps the OpenAI-compatible client pointed at `localhost:8001`
+- Wraps the OpenAI-compatible client pointed at `LLM_BASE_URL` (default `http://localhost:11434/v1`)
 - Exposes two methods:
   - `complete(prompt, system, temperature) → str` — free text generation
-  - `structured(prompt, system, schema) → dict` — uses vLLM guided decoding (`guided_json`) to enforce JSON schema, no parsing fragility
+  - `structured(prompt, system, schema) → dict` — uses Ollama's `response_format` with `json_schema` to enforce JSON output; falls back to `json_object` mode when no schema is given
 - All prompts go through this client — no direct API calls elsewhere in the codebase
+- `schema` accepts a Pydantic model class or a raw JSON schema dict
 
-**Note:** `guided_json` in vLLM accepts a Pydantic model or JSON schema and guarantees valid JSON output. Use this for all navigation calls in Stage 5.
+**Environment variables:**
+```bash
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=<your-ollama-model-name>   # e.g. silma-v1, qwen3:8b
+```
 
 ---
 
@@ -240,12 +231,12 @@ uv run vllm serve \
 ```
 for each leaf node:
     content = extract text from parsed chunks for node's page range
-    hook = SILMA.complete(summarize_leaf_prompt(node.title, content))
+    hook = llm.complete(summarize_leaf_prompt(node.title, content))
     node.hook = hook
 
 for each non-leaf node (bottom-up, children before parents):
     child_hooks = [child.hook for child in node.children]
-    hook = SILMA.complete(rollup_prompt(node.title, child_hooks))
+    hook = llm.complete(rollup_prompt(node.title, child_hooks))
     node.hook = hook
 
 save index.json
@@ -291,28 +282,28 @@ class NavigationState(TypedDict):
 
 **`normalize_query`**
 - Detects language (simple heuristic: Arabic unicode range check)
-- If English: translate to Arabic using SILMA
+- If English: translate to Arabic using the LLM
 - Normalize: strip ambiguity, ensure formal Arabic phrasing
 - Output: `state.query` set, `state.language` set
 
 **`check_intent`**
-- Single SILMA structured output call
+- Single LLM structured output call
 - Schema: `{"intent": "valid" | "invalid", "reason": "string"}`
-- System prompt enforces: this system answers questions about Egyptian banking regulation only. Legal consultation, regulatory compliance, and document clarification are valid. Everything else is invalid.
+- System prompt enforces: this system answers questions about Egyptian accounting standards only. Document clarification and standards interpretation are valid. Everything else is invalid.
 - If invalid: set `state.status = "rejected"`, route to END
 
 **`navigate_level`**
 - The core node. Called repeatedly as the graph traverses levels.
 - Takes current level's candidate nodes from index, formats their hooks as a numbered list
-- SILMA structured output call: `{"selected_ids": ["id1"], "confidence": "high|low"}`
-- If top-level: candidates are the 3 root sections
+- LLM structured output call: `{"selected_ids": ["id1"], "confidence": "high|low"}`
+- If top-level: candidates are the root sections
 - If mid-level: candidates are children of previously selected node
 - If leaf reached: set `state.leaf_content`, `state.leaf_metadata`, `state.status = "found"`, route to END
 - If confidence is low and `retry_count < 1`: route to `rephrase_and_retry`
 - If confidence is low and `retry_count >= 1`: set `state.status = "not_found"`, route to END
 
 **`rephrase_and_retry`**
-- SILMA call: given the original query and the available section hooks, rephrase the query to be more specific and aligned with the document's terminology
+- LLM call: given the original query and the available section hooks, rephrase the query to be more specific and aligned with the document's terminology
 - Increment `state.retry_count`
 - Reset navigation path, route back to `navigate_level` from top
 
@@ -339,7 +330,7 @@ START
 
 **Implementation:**
 
-Single SILMA call via `llm.client.complete()`:
+Single LLM call via `llm.client.complete()`:
 
 System prompt:
 > أنت مساعد قانوني متخصص في اللوائح المصرفية المصرية. مهمتك الإجابة على أسئلة المستخدمين بدقة واحترافية بناءً حصراً على النص التنظيمي المقدم إليك. يجب أن تتضمن إجابتك دائماً مرجعاً صريحاً للفقرة أو المادة والصفحات التي استندت إليها. لا تضف أي معلومات خارج النص المقدم.
@@ -403,7 +394,7 @@ Response:
 
 **Step 3 — CORS + startup:**
 - CORS configured for frontend origin
-- On startup: load `index.json` into memory once, initialize LangGraph, initialize SILMA client
+- On startup: load `index.json` into memory once, initialize LangGraph, initialize LLM client
 - Health check endpoint: `GET /health`
 
 **File:** `waraq/api/main.py`, `waraq/api/schemas.py`
@@ -412,7 +403,7 @@ Response:
 
 ## Stage 8 — Langfuse Observability
 
-**Goal:** Every query is fully traced in Langfuse — from raw input to final answer — with all intermediate SILMA calls visible.
+**Goal:** Every query is fully traced in Langfuse — from raw input to final answer — with all intermediate LLM calls visible.
 
 **Definition of done:** A query sent through the API appears in the local Langfuse dashboard as a full trace with spans for: normalize, intent check, each navigation step, rephrasing (if triggered), and response generation.
 
@@ -454,9 +445,9 @@ Response:
 
 ```bash
 # .env.example
-LANDING_AI_API_KEY=
-VLLM_BASE_URL=http://localhost:8001/v1
-VLLM_MODEL=SILMA-AI/SILMA-9B-Instruct-v1
+VISION_AGENT_API_KEY=
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=silma-v1
 LANGFUSE_PUBLIC_KEY=
 LANGFUSE_SECRET_KEY=
 LANGFUSE_HOST=http://localhost:3000
@@ -466,9 +457,9 @@ LANGFUSE_HOST=http://localhost:3000
 
 ## Definition of Done — Full Project
 
-- [ ] `data/parsed/output.json` exists with all 245 pages parsed
+- [ ] `data/parsed/output.json` exists with all pages parsed
 - [ ] `data/index.json` exists with full structure, all hooks filled, all page ranges accurate
-- [ ] vLLM serving SILMA-9B at `localhost:8001`, health check passing
+- [ ] Ollama serving the model at `localhost:11434`, health check passing
 - [ ] 5 known test queries return correct leaf nodes via navigation graph
 - [ ] Out-of-domain query returns rejection response
 - [ ] End-to-end query through FastAPI returns Arabic answer with citation

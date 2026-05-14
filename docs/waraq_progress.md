@@ -32,23 +32,8 @@ Key behaviours:
 #### `scripts/remerge_parts.py`
 One-time utility to remerge existing `part_N.json` checkpoints into `output.json` with correct full-document page numbers, without re-calling the API.
 
-Key behaviours:
-- Reconstructs the same page ranges as `run_ingestion.py` from the PDF's page count
-- Auto-detects the current page base in each checkpoint and shifts to the correct 1-indexed full-document position
-- Checkpoint files are **never modified** — read-only
-- Atomic write for `output.json`
-- Corrupt checkpoint exits with a clear message
-- Safe to re-run (idempotent)
-
 #### `scripts/build_markdown.py`
 Converts `output.json` into human-readable markdown files for inspection.
-
-Key behaviours:
-- Sorts chunks by `(page, grounding.box.top)` — page order, then top-to-bottom within each page
-- Writes `data/parsed/markdown/document.md` — full document with `---` page separators and `<!-- page N -->` comments
-- Writes `data/parsed/markdown/pages/page_N.md` — one file per page
-- Chunks with no page number are skipped with a warning rather than crashing
-- `output.json` and all `part_N.json` files are never modified
 
 ---
 
@@ -99,43 +84,45 @@ All `hook` fields are `null` — to be filled by Stage 4 (summary generation).
 
 ---
 
-## Stage 3 — SILMA-9B via vLLM ✅
+## Stage 3 — SILMA-9B via Ollama ✅
 
-**Status:** Complete (code implemented; server startup requires WSL2 + GPU)  
-**Files:** `waraq/llm/client.py`, `scripts/start_vllm.sh`, `scripts/test_vllm.py`
+**Status:** Complete (code implemented; run `scripts/test_llm.py` once Ollama is serving)  
+**Files:** `waraq/llm/client.py`, `scripts/test_llm.py`
 
 ---
 
 ### What was built
 
 #### `waraq/llm/client.py`
-Shared SILMA client used by every stage downstream.
+Shared LLM client used by every stage downstream.
 
 Key design decisions:
-- **`SILMAClient` class** wraps the OpenAI-compatible client pointed at `VLLM_BASE_URL` (default `http://localhost:8001/v1`)
+- **`SILMAClient` class** wraps the OpenAI-compatible client pointed at `LLM_BASE_URL` (default `http://localhost:11434/v1`)
 - **`complete(prompt, system, temperature) → str`** — free-text generation; standard chat completion
-- **`structured(prompt, system, schema, temperature) → dict`** — passes `guided_json` in `extra_body` to vLLM, guaranteeing valid JSON output without parsing fragility. `schema` accepts either a Pydantic model class or a raw JSON schema dict
-- **`get_client()`** — module-level singleton factory; all other modules import and call this rather than instantiating directly
-- Config loaded from `.env` via `python-dotenv`; no hardcoded URLs or model names
+- **`structured(prompt, system, schema, temperature) → dict`** — uses Ollama's `response_format` with `json_schema` type to guarantee valid JSON output. When no schema is given, falls back to `json_object` mode. `schema` accepts a Pydantic model class or a raw JSON schema dict
+- **`get_client()`** — module-level singleton factory; all other modules import and call this
+- Config loaded from `.env` via `python-dotenv`
 
-#### `scripts/start_vllm.sh`
-Bash script for WSL2; starts vLLM on port 8001 with bfloat16, 8192 token context, 90% GPU memory utilisation. Accepts passthrough flags.
+#### `scripts/test_llm.py`
+Smoke test with two assertions:
+1. Free-text Arabic prompt returns a non-empty response
+2. Structured prompt with `IntentResult` Pydantic schema returns a dict with `intent` and `reason` keys
 
-#### `scripts/test_vllm.py`
-Smoke test that:
-1. Sends a free-text Arabic prompt and asserts a non-empty response
-2. Sends a structured prompt with `IntentResult` (Pydantic) schema and asserts `intent` + `reason` keys are present in the JSON response
+#### Environment variable change
+Renamed `VLLM_BASE_URL` / `VLLM_MODEL` → `LLM_BASE_URL` / `LLM_MODEL` throughout `.env`, `.env.example`, and `client.py`.
 
-#### `pyproject.toml` update
-Added `[project.optional-dependencies] server = ["vllm>=0.4.0"]` — vLLM is installed on the WSL2/Linux side only, not bundled into the main project dependencies.
+---
+
+### Why Ollama instead of vLLM
+
+vLLM was the original plan but was dropped — it requires a full Linux CUDA environment and is very heavyweight to set up. Ollama is already running with the same SILMA model and exposes an identical OpenAI-compatible API at `http://localhost:11434/v1`, so no application code changes were needed beyond the base URL and structured output mechanism (`response_format` instead of `extra_body.guided_json`).
 
 ---
 
 ### Definition of done — Stage 3
 
 - [x] `waraq/llm/client.py` implemented with `complete()` and `structured()` methods
-- [x] `scripts/start_vllm.sh` written for WSL2 deployment
-- [x] `scripts/test_vllm.py` written (run once vLLM server is live)
-- [ ] Live test: `python scripts/test_vllm.py` passes against a running vLLM server
+- [x] `scripts/test_llm.py` written
+- [ ] Live test: `python scripts/test_llm.py` passes against a running Ollama server
 
-See `docs/stage3_setup_guide.md` for full WSL2 setup and test instructions.
+See `docs/stage3_setup_guide.md` for setup and test instructions.
