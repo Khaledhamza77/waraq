@@ -82,10 +82,15 @@ def is_leaf(node: dict) -> bool:
     return "children" not in node or not node["children"]
 
 
-def process_node(node: dict, client, bar: tqdm) -> None:
+def process_node(node: dict, client, bar: tqdm, breadcrumb: list[str] | None = None) -> None:
+    if breadcrumb is None:
+        breadcrumb = []
+
     children = node.get("children", [])
+    child_breadcrumb = breadcrumb + [node.get("title", "")]
+
     for child in children:
-        process_node(child, client, bar)
+        process_node(child, client, bar, child_breadcrumb)
 
     node_id = node.get("id", "?")
 
@@ -111,7 +116,7 @@ def process_node(node: dict, client, bar: tqdm) -> None:
         bar.set_postfix_str(f"leaf [{start}-{end}]: {node_id}", refresh=True)
         try:
             hook = client.complete(
-                prompt=summarize_leaf_prompt(node.get("title", ""), content),
+                prompt=summarize_leaf_prompt(node.get("title", ""), content, breadcrumb),
                 system=summarize_leaf_system(),
             )
         except Exception as exc:
@@ -130,7 +135,7 @@ def process_node(node: dict, client, bar: tqdm) -> None:
         bar.set_postfix_str(f"rollup ({len(child_hooks)} children): {node_id}", refresh=True)
         try:
             hook = client.complete(
-                prompt=rollup_prompt(node.get("title", ""), child_hooks),
+                prompt=rollup_prompt(node.get("title", ""), child_hooks, breadcrumb),
                 system=rollup_system(),
             )
         except Exception as exc:
@@ -158,13 +163,15 @@ def main() -> None:
 
     client = get_client()
     total_nodes = sum(_count_nodes(s) for s in sections)
+    document_title = index_data.get("document", {}).get("title", "")
+    root_breadcrumb = [document_title] if document_title else []
 
     print(f"TEST — running summary gen on index-test.json ({total_nodes} nodes)\n")
 
     with tqdm(total=total_nodes, unit="node", dynamic_ncols=True) as bar:
         for section in sections:
             bar.write(f"Section: {section.get('id')} — {section.get('title')}")
-            process_node(section, client, bar)
+            process_node(section, client, bar, root_breadcrumb)
 
     # Write filled hooks to disk for inspection
     TEST_OUTPUT_PATH.write_text(

@@ -1,5 +1,13 @@
-def summarize_leaf_prompt(title: str, content: str) -> str:
+def _location_line(breadcrumb: list[str]) -> str:
+    if not breadcrumb:
+        return ""
+    return f"الموقع في الوثيقة: {' > '.join(breadcrumb)}\n"
+
+
+def summarize_leaf_prompt(title: str, content: str, breadcrumb: list[str] | None = None) -> str:
+    location = _location_line(breadcrumb or [])
     return (
+        f"{location}"
         f"القسم: {title}\n\n"
         f"النص:\n{content}\n\n"
         "بناءً على النص أعلاه، اكتب فقرة واحدة موجزة باللغة العربية تصف: "
@@ -16,9 +24,11 @@ def summarize_leaf_system() -> str:
     )
 
 
-def rollup_prompt(title: str, child_hooks: list[str]) -> str:
+def rollup_prompt(title: str, child_hooks: list[str], breadcrumb: list[str] | None = None) -> str:
+    location = _location_line(breadcrumb or [])
     hooks_text = "\n".join(f"- {h}" for h in child_hooks)
     return (
+        f"{location}"
         f"القسم الرئيسي: {title}\n\n"
         f"ملخصات الأقسام الفرعية:\n{hooks_text}\n\n"
         "بناءً على ملخصات الأقسام الفرعية أعلاه، اكتب فقرة واحدة موجزة باللغة العربية "

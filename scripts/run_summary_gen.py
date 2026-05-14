@@ -84,12 +84,22 @@ def _count_nodes(node: dict) -> int:
     return 1 + sum(_count_nodes(c) for c in node.get("children", []))
 
 
-def process_node(node: dict, index_data: dict, client, bar: tqdm) -> None:
+def process_node(
+    node: dict,
+    index_data: dict,
+    client,
+    bar: tqdm,
+    breadcrumb: list[str] | None = None,
+) -> None:
     """Post-order: process children first, then this node."""
+    if breadcrumb is None:
+        breadcrumb = []
+
     children = node.get("children", [])
+    child_breadcrumb = breadcrumb + [node.get("title", "")]
 
     for child in children:
-        process_node(child, index_data, client, bar)
+        process_node(child, index_data, client, bar, child_breadcrumb)
 
     node_id = node.get("id", "?")
 
@@ -115,7 +125,7 @@ def process_node(node: dict, index_data: dict, client, bar: tqdm) -> None:
         bar.set_postfix_str(f"leaf [{start}-{end}]: {node_id}", refresh=True)
         try:
             hook = client.complete(
-                prompt=summarize_leaf_prompt(node.get("title", ""), content),
+                prompt=summarize_leaf_prompt(node.get("title", ""), content, breadcrumb),
                 system=summarize_leaf_system(),
             )
         except Exception as exc:
@@ -135,7 +145,7 @@ def process_node(node: dict, index_data: dict, client, bar: tqdm) -> None:
         bar.set_postfix_str(f"rollup ({len(child_hooks)} children): {node_id}", refresh=True)
         try:
             hook = client.complete(
-                prompt=rollup_prompt(node.get("title", ""), child_hooks),
+                prompt=rollup_prompt(node.get("title", ""), child_hooks, breadcrumb),
                 system=rollup_system(),
             )
         except Exception as exc:
@@ -158,14 +168,17 @@ def main() -> None:
     client = get_client()
     index_data = load_index()
     sections = index_data.get("sections", [])
+    document_title = index_data.get("document", {}).get("title", "")
 
     total_nodes = sum(_count_nodes(s) for s in sections)
     print(f"Starting summary generation — {total_nodes} nodes across {len(sections)} top-level sections\n")
 
+    root_breadcrumb = [document_title] if document_title else []
+
     with tqdm(total=total_nodes, unit="node", dynamic_ncols=True) as bar:
         for section in sections:
             bar.write(f"Section: {section.get('id')} — {section.get('title')}")
-            process_node(section, index_data, client, bar)
+            process_node(section, index_data, client, bar, root_breadcrumb)
 
     nulls = []
 
