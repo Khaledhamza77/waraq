@@ -18,6 +18,15 @@ _MODEL = os.getenv("LLM_MODEL", "silma-v1")
 _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 
 
+def _clean_llm_output(raw: str) -> str:
+    # Strip complete <think>...</think> blocks
+    s = _THINK_RE.sub("", raw)
+    # Strip anything before a stray </think> (opening tag was missing)
+    if "</think>" in s:
+        s = s.split("</think>", 1)[-1]
+    return s.strip()
+
+
 def _clean_schema(schema: dict[str, Any]) -> dict[str, Any]:
     """Strip Pydantic-generated metadata that confuses Ollama's grammar engine.
 
@@ -68,7 +77,7 @@ class SILMAClient:
             extra_body={"num_ctx": 32768},
         )
         raw = response.choices[0].message.content or ""
-        return _THINK_RE.sub("", raw).strip()
+        return _clean_llm_output(raw)
 
     def structured(
         self,
@@ -110,7 +119,7 @@ class SILMAClient:
                 extra_body={"num_ctx": 32768},
             )
             raw = response.choices[0].message.content or "{}"
-            content = _THINK_RE.sub("", raw).strip()
+            content = _clean_llm_output(raw)
             try:
                 return json.loads(content)
             except json.JSONDecodeError as exc:
