@@ -307,4 +307,30 @@ Fix: when processing a `"properties"` key, iterate over property names without f
 - [x] `waraq/navigation/prompts.py` extended with Stage 6 prompts
 - [x] `_clean_schema` bug fixed in `waraq/llm/client.py`
 - [x] `tests/test_responder.py` written with 7 tests (1 unit + 6 integration)
+- [x] `tests/test_nav_responder.py` written with 6 end-to-end integration tests
 - [ ] `pytest tests/test_responder.py` passes against a live Ollama server
+- [ ] `pytest tests/test_nav_responder.py` passes against a live Ollama server
+
+---
+
+### End-to-end test — `tests/test_nav_responder.py`
+
+Chains the full pipeline (navigate → respond) for each of the 5 known-answer queries from Stage 5, plus the greeting case. Each test asserts both navigation correctness (leaf lands in the expected section) and response quality (answer non-empty, citation shape valid, page numbers are integers with `start >= 1` and `end >= start`).
+
+**`_run_full(graph_config, query)`** — the shared pipeline helper. Runs the graph, then branches on status:
+- `found` → calls `generate_answer(nav["query"], nav["leaf_content"], nav["leaf_metadata"])`
+- `greeting` → calls `generate_greeting(nav["original_query"])` (original phrasing, not normalized)
+- `not_found` → returns `NOT_FOUND_ANSWER` constant, no LLM call
+- `rejected` → returns empty answer, no LLM call
+
+**Log output per test** (visible with `--log-cli-level=DEBUG`):
+1. Query header
+2. Navigation graph's own DEBUG lines (candidates, LLM selections, depth)
+3. Navigation result block: status, intent, language, normalized query, navigation path, leaf titles + page ranges, content length
+4. Responder handoff block: normalized query, number of sources
+5. Responder output block: first 300 chars of answer, citation node_id, title, pages
+
+**Run with:**
+```
+pytest tests/test_nav_responder.py -v --log-cli-level=DEBUG
+```
