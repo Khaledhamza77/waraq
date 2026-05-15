@@ -25,10 +25,12 @@ INDEX_PATH = ROOT / "data" / "index.json"
 PAGES_DIR = ROOT / "data" / "parsed" / "markdown" / "pages"
 
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
 sys.stdout.reconfigure(encoding="utf-8")
 
 from tqdm import tqdm
 
+from normalize_hooks import normalize_hook
 from waraq.llm.client import get_client
 from waraq.navigation.prompts import rebuild_section_prompt, rebuild_section_system
 
@@ -135,7 +137,7 @@ def process_node(
         bar.write(f"\nERROR on {node_id}: {exc}")
         sys.exit(1)
 
-    node["hook"] = hook.strip()
+    node["hook"] = normalize_hook(hook)
     save_index(index_data)
     bar.update(1)
 
