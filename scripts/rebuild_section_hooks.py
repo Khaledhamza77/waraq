@@ -5,7 +5,9 @@ Targets all non-leaf nodes in sections 3–9 of data/index.json and regenerates
 their hooks using the section's table-of-contents page, introduction pages, and
 the current hooks of its direct children.
 
-Leaves (nodes without children) are never touched.
+Leaves (nodes without children) are never touched. Non-leaf nodes that have
+neither a contents_page nor introduction_pages are also skipped — they lack
+the document anchors needed for a quality rebuild.
 
 Processing order is post-order (children before parents) so that when a parent
 node is rebuilt, its direct children already have their freshly rebuilt hooks.
@@ -74,11 +76,12 @@ def read_page_list(pages: list) -> str:
 
 # ── Node counting ─────────────────────────────────────────────────────────────
 
-def _count_non_leaves(node: dict) -> int:
+def _count_to_rebuild(node: dict) -> int:
     children = node.get("children", [])
     if not children:
         return 0
-    return 1 + sum(_count_non_leaves(c) for c in children)
+    skip = not node.get("contents_page") and not node.get("introduction_pages")
+    return (0 if skip else 1) + sum(_count_to_rebuild(c) for c in children)
 
 
 # ── Core traversal ────────────────────────────────────────────────────────────
@@ -98,6 +101,9 @@ def process_node(
 
     if not children:
         return  # leaf — skip
+
+    if not node.get("contents_page") and not node.get("introduction_pages"):
+        return  # no document pages — skip
 
     node_id = node.get("id", "?")
 
@@ -122,22 +128,27 @@ def process_node(
         bar.update(1)
         return
 
-    try:
-        hook = client.complete(
-            prompt=rebuild_section_prompt(
-                title=node.get("title", ""),
-                toc_content=toc_content,
-                intro_content=intro_content,
-                child_hooks=child_hooks,
-            ),
-            system=rebuild_section_system(),
-            think=True,
-        )
-    except Exception as exc:
-        bar.write(f"\nERROR on {node_id}: {exc}")
-        sys.exit(1)
+    prompt = rebuild_section_prompt(
+        title=node.get("title", ""),
+        toc_content=toc_content,
+        intro_content=intro_content,
+        child_hooks=child_hooks,
+    )
+    system = rebuild_section_system()
 
-    node["hook"] = normalize_hook(hook)
+    for attempt in range(2):
+        try:
+            raw = client.complete(prompt=prompt, system=system, think=True)
+        except Exception as exc:
+            bar.write(f"\nERROR on {node_id} (attempt {attempt + 1}): {exc}")
+            sys.exit(1)
+
+        hook = normalize_hook(raw)
+        if hook:
+            break
+        bar.write(f"\nWARN: empty hook for {node_id} (attempt {attempt + 1}) — {'retrying' if attempt == 0 else 'giving up'}")
+
+    node["hook"] = hook if hook else None
     save_index(index_data)
     bar.update(1)
 
@@ -158,7 +169,7 @@ def main() -> None:
     sections = index_data.get("sections", [])
 
     target_sections = [s for s in sections if s.get("id") in REBUILD_SECTION_IDS]
-    total = sum(_count_non_leaves(s) for s in target_sections)
+    total = sum(_count_to_rebuild(s) for s in target_sections)
 
     mode = " (DRY RUN)" if dry_run else ""
     print(f"Rebuilding section hooks{mode} — {total} non-leaf nodes across {len(target_sections)} sections\n")
