@@ -339,8 +339,8 @@ pytest tests/test_nav_responder.py -v --log-cli-level=DEBUG
 
 ## Stage 7 — Chainlit Application ✅
 
-**Status:** Complete (code implemented; install `chainlit` then run)
-**Files:** `chainlit_app.py`, `waraq/observability/tracer.py`, `pyproject.toml` (updated)
+**Status:** Complete (code implemented; install dependencies then run)
+**Files:** `app/server.py` (new), `app/chainlit_app.py` (moved from root), `waraq/observability/tracer.py`, `pyproject.toml` (updated)
 
 ---
 
@@ -354,10 +354,13 @@ Thin, fail-safe Langfuse wrapper. Never raises — all exceptions are caught and
 - **`safe_end(span, output)`** — closes an open span. No-op if span is `None`.
 - **`flush()`** — flushes buffered Langfuse events. Reads `_langfuse` directly (no init trigger).
 
-#### `chainlit_app.py`
-Entry point for the Chainlit server.
+#### `app/server.py`
+FastAPI entry point. Mounts Chainlit at `/chainlit`, exposes `GET /custom-auth` and `GET /documents/{path}`, and sets CORS for Vite dev (`5173`) and preview (`4173`) ports. `_ROOT` and `_DOCUMENTS_DIR` are anchored to `Path(__file__).parent.parent` (repo root) — safe regardless of working directory.
 
-**`@cl.on_chat_start`**: Reads `data/index.json`, calls `build_graph()`, stores both in the Chainlit user session. Index and graph are per-session (one load per connected client). Paths are anchored to `Path(__file__).parent` — safe regardless of the working directory at startup.
+#### `app/chainlit_app.py`
+Chainlit handlers. Loaded by `app/server.py` via `mount_chainlit`.
+
+**`@cl.on_chat_start`**: Reads `data/index.json`, calls `build_graph()`, stores both in the Chainlit user session. Index and graph are per-session (one load per connected client). `_ROOT` anchored to `Path(__file__).parent.parent` (repo root).
 
 **`@cl.on_message`**: Full pipeline handler.
 1. Creates a Langfuse trace (`waraq_query`) with the raw user query as input.
@@ -377,8 +380,7 @@ Entry point for the Chainlit server.
 **Error handling**: a top-level `try/except` around `graph.astream` shows a user-facing Arabic error message, updates the trace with `{"error": "graph_stream_failed"}`, and returns cleanly.
 
 #### `pyproject.toml`
-- Removed `fastapi`, `uvicorn` (unused in Chainlit architecture)
-- Added `chainlit>=2.0.0`
+- Added `chainlit>=2.0.0`, `fastapi`, `uvicorn` (FastAPI + Chainlit together via `mount_chainlit`)
 
 ---
 
@@ -398,16 +400,9 @@ trace: waraq_query  {input: {query}}
 
 ### Run instructions
 
-```
-# Install once
-pip install chainlit
-
-# Create .chainlit/config.toml (CORS for Vite dev server)
-# [server]
-# cors_allow_origins = ["http://localhost:5173", "http://localhost:4173"]
-
+```bash
 # Terminal 1 — backend
-chainlit run chainlit_app.py --port 8000
+uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload
 
 # Terminal 2 — frontend
 cd frontend && npm install && npm run dev
@@ -429,7 +424,7 @@ cd frontend && npm install && npm run dev
 
 Mixed unit + integration test file. 7 unit tests (no Ollama), 4 integration tests (Ollama required).
 
-**Strategy:** The entire `chainlit` package is replaced in `sys.modules` with a `MagicMock` before `chainlit_app` is imported. This makes `@cl.on_chat_start` and `@cl.on_message` transparent pass-through decorators, leaving the handler functions directly callable as plain async coroutines. `cl.Message` is replaced with `_FakeMessage`, a minimal class that appends every instance to a class-level list so tests can inspect the final `.content` sent to the user.
+**Strategy:** The entire `chainlit` package is replaced in `sys.modules` with a `MagicMock` before `app.chainlit_app` is imported (`import app.chainlit_app as chainlit_app`). This makes `@cl.on_chat_start` and `@cl.on_message` transparent pass-through decorators, leaving the handler functions directly callable as plain async coroutines. `cl.Message` is replaced with `_FakeMessage`, a minimal class that appends every instance to a class-level list so tests can inspect the final `.content` sent to the user.
 
 **`_FakeMessage` tracking:** `on_message` creates exactly one `cl.Message` object per turn (the AI response bubble) and mutates its `.content` through the streaming process. `_FakeMessage._instances[-1]` after the call always holds the final message state.
 
@@ -458,14 +453,15 @@ pytest tests/test_chainlit_app.py -v --log-cli-level=DEBUG  # all tests
 
 ### Definition of done — Stage 7
 
-- [x] `chainlit_app.py` implemented with `@cl.on_chat_start` and `@cl.on_message`
+- [x] `app/server.py` — FastAPI app with `mount_chainlit`, CORS, `/custom-auth`, `/documents/{path}`
+- [x] `app/chainlit_app.py` — `@cl.on_chat_start` and `@cl.on_message` handlers
 - [x] `waraq/observability/tracer.py` implemented with `get_langfuse`, `safe_span`, `safe_end`, `flush`
-- [x] `pyproject.toml` updated — `chainlit` added, `fastapi`/`uvicorn` removed
-- [x] Paths anchored to `Path(__file__).parent` (CWD-safe)
-- [x] `tests/test_chainlit_app.py` written — 7 unit tests + 4 integration tests
-- [ ] `pip install chainlit` on target machine
+- [x] `pyproject.toml` updated — `chainlit`, `fastapi`, `uvicorn` added
+- [x] `_ROOT` anchored to `Path(__file__).parent.parent` in both `app/` files (CWD-safe)
+- [x] `_NODE_STATUS` covers all graph nodes including `rephrase_and_retry`
+- [x] CORS includes `5173` (dev) and `4173` (preview)
+- [x] `tests/test_chainlit_app.py` written — 7 unit tests + 4 integration tests; import updated to `app.chainlit_app`
 - [ ] `npm install` in `frontend/`
-- [ ] `.chainlit/config.toml` created with CORS origins
 - [ ] End-to-end smoke test: send a query through the Vite frontend, verify response appears and Langfuse trace is recorded
 
 ---
@@ -473,7 +469,7 @@ pytest tests/test_chainlit_app.py -v --log-cli-level=DEBUG  # all tests
 ## Stage 8 — Per-LLM-call Langfuse Generation Tracing ✅
 
 **Status:** Complete (code implemented; requires Langfuse stack running — see `docs/langfuse_setup.md`)
-**Files:** `waraq/observability/tracer.py` (extended), `waraq/llm/client.py` (extended), `chainlit_app.py` (updated), `docker-compose.yml` (cleaned), `.env.example` (updated), `docs/langfuse_setup.md` (new)
+**Files:** `waraq/observability/tracer.py` (extended), `waraq/llm/client.py` (extended), `app/chainlit_app.py` (updated), `docker-compose.yml` (cleaned), `.env.example` (updated), `docs/langfuse_setup.md` (new)
 
 ---
 
@@ -490,7 +486,7 @@ pytest tests/test_chainlit_app.py -v --log-cli-level=DEBUG  # all tests
 
 `SILMAClient.complete()` and `SILMAClient.structured()` each call `safe_generation()` immediately after the Ollama API call returns. Token counts come from `response.usage` (`prompt_tokens`, `completion_tokens`). `structured()` retries up to twice on JSON decode errors — each API attempt is logged separately, so retry attempts are visible in Langfuse.
 
-#### `chainlit_app.py` — changes
+#### `app/chainlit_app.py` — changes
 
 - Imports `set_trace_parent`, `reset_trace_parent` from `tracer`.
 - After creating the Langfuse trace (or `None`), calls `token = set_trace_parent(trace)`.
@@ -545,7 +541,7 @@ docker compose up -d
 # 2 — Create account + project at http://localhost:3000, copy API keys to .env
 
 # 3 — Run waraq
-chainlit run chainlit_app.py --port 8000
+uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload
 
 # 4 — Verify traces at http://localhost:3000
 ```
@@ -558,7 +554,7 @@ Full setup walkthrough: `docs/langfuse_setup.md`
 
 - [x] `waraq/observability/tracer.py` extended with `set_trace_parent`, `reset_trace_parent`, `safe_generation`
 - [x] `waraq/llm/client.py` extended — `complete()` and `structured()` call `safe_generation()` per API call
-- [x] `chainlit_app.py` updated — trace parent set/reset via `ContextVar` in `try/finally`
+- [x] `app/chainlit_app.py` updated — trace parent set/reset via `ContextVar` in `try/finally`
 - [x] `docker-compose.yml` cleaned to postgres + langfuse only
 - [x] `.env.example` updated with docker-compose vars
 - [x] `docs/langfuse_setup.md` written

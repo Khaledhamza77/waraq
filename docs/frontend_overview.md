@@ -113,7 +113,7 @@ Four suggestions are shown on the welcome screen. These hit the same `sendMessag
 
 ## Stage 7 Implementation Shape
 
-Stage 7 is **not** a FastAPI REST layer. It is a **Chainlit application** (`chainlit_app.py`) that:
+Stage 7 is a **FastAPI application** (`app/server.py`) that mounts Chainlit internally. `app/chainlit_app.py` contains the Chainlit handlers. It:
 
 1. Exposes `GET /custom-auth` — trivial passthrough
 2. Hosts Chainlit at `/chainlit` — WebSocket + HTTP endpoints handled by Chainlit itself

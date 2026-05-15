@@ -53,7 +53,7 @@ _cl.user_session.set = lambda key, val: _session.update({key: val})
 
 sys.modules["chainlit"] = _cl
 
-import chainlit_app  # noqa: E402  (must come after sys.modules patch)
+import app.chainlit_app as chainlit_app  # noqa: E402  (must come after sys.modules patch)
 
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────

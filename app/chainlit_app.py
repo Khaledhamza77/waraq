@@ -1,8 +1,7 @@
 """
 Waraq — Chainlit application entry point (Stage 7).
 
-Run:
-    chainlit run chainlit_app.py --port 8000
+Loaded by app/server.py via mount_chainlit.
 """
 import asyncio
 import json
@@ -28,7 +27,7 @@ log = logging.getLogger(__name__)
 
 # ── Data paths ────────────────────────────────────────────────────────────────
 
-_ROOT = Path(__file__).parent
+_ROOT = Path(__file__).parent.parent  # repo root
 _INDEX_PATH = _ROOT / "data" / "index.json"
 _MARKDOWN_DIR = _ROOT / "data" / "parsed" / "markdown" / "pages"
 
@@ -37,6 +36,7 @@ _MARKDOWN_DIR = _ROOT / "data" / "parsed" / "markdown" / "pages"
 _NODE_STATUS: dict[str, str] = {
     "check_intent": "جاري تحليل نية السؤال...",
     "normalize_query": "جاري توحيد صياغة السؤال...",
+    "rephrase_and_retry": "جاري إعادة صياغة السؤال للبحث مجدداً...",
 }
 
 
@@ -62,7 +62,7 @@ def _format_response(answer: str, citations: list[dict]) -> str:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _span_output_from_updates(updates: dict[str, Any]) -> dict[str, Any]:
-    """Build Langfuse span output from a node's state updates, omitting heavy fields."""
+    """Omit heavy fields (leaf_content) from Langfuse span output."""
     return {k: v for k, v in updates.items() if k not in ("leaf_content",)}
 
 
@@ -95,8 +95,6 @@ async def on_message(message: cl.Message) -> None:
         except Exception:
             log.exception("Langfuse trace init failed")
 
-    # Propagate trace into SILMAClient calls (including those inside graph nodes
-    # and asyncio.to_thread workers — Python 3.7+ copies ContextVar to threads).
     token = set_trace_parent(trace)
 
     # ── Initial Chainlit status bubble ────────────────────────────────────────
@@ -128,7 +126,6 @@ async def on_message(message: cl.Message) -> None:
                 updates: dict[str, Any] = chunk[node_name]
                 nav.update(updates)
 
-                # Update Chainlit status
                 if node_name == "navigate_level":
                     nav_level += 1
                     status_text = _nav_status(nav_level)
@@ -137,7 +134,6 @@ async def on_message(message: cl.Message) -> None:
                 msg.content = status_text
                 await msg.update()
 
-                # Langfuse span for this node
                 if trace:
                     try:
                         span_name = (

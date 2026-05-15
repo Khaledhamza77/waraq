@@ -15,6 +15,10 @@
 
 ```
 waraq/
+├── app/                        # Stage 7: application layer (server + Chainlit)
+│   ├── __init__.py
+│   ├── server.py               # FastAPI entry point (uvicorn app.server:app)
+│   └── chainlit_app.py         # Chainlit handlers (@on_chat_start, @on_message)
 ├── data/
 │   ├── raw/                    # original PDF
 │   ├── parsed/                 # Landing AI raw JSON output
@@ -35,7 +39,6 @@ waraq/
 │   │   └── client.py           # shared Ollama client, structured output helpers
 │   └── observability/
 │       └── tracer.py           # Stage 8: Langfuse integration
-├── chainlit_app.py             # Stage 7: Chainlit application entry point
 ├── .chainlit/                  # Chainlit config (auto-generated)
 ├── scripts/
 │   ├── run_ingestion.py        # one-shot: parse PDF → save JSON
@@ -434,12 +437,12 @@ Index and graph are loaded per-session in `@cl.on_chat_start`, not as a global s
 **Step 5 — Run:**
 
 ```bash
-chainlit run chainlit_app.py --port 8000
+uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Chainlit mounts at `/chainlit` internally and exposes the socket.io endpoint the frontend expects.
+FastAPI mounts Chainlit at `/chainlit` via `mount_chainlit`, exposing the socket.io endpoint the frontend expects. The `custom-auth` and `documents` endpoints are served alongside it on the same port.
 
-**File:** `chainlit_app.py`
+**Files:** `app/server.py`, `app/chainlit_app.py`
 
 ---
 
@@ -507,8 +510,8 @@ CHAINLIT_AUTH_SECRET=          # any random string, required for auth callbacks
 - [ ] Ollama serving the model at `localhost:11434`, health check passing
 - [ ] 5 known test queries return correct leaf nodes via navigation graph
 - [ ] Out-of-domain query returns rejection response
-- [ ] End-to-end query through Chainlit returns streamed Arabic answer with citations
-- [ ] Frontend connected and rendering responses
+- [x] End-to-end query through Chainlit returns streamed Arabic answer with citations
+- [x] Frontend connected and rendering responses
 - [ ] All traces visible in local Langfuse dashboard
 
 ---

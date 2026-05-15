@@ -4,7 +4,7 @@ Root FastAPI application.
 Mounts Chainlit at /chainlit and serves the React frontend.
 
 Run:
-    uvicorn server:app --host 0.0.0.0 --port 8000 --reload
+    uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload
 
 Then start the React frontend separately:
     cd frontend && npm run dev       (runs at http://localhost:5173)
@@ -16,7 +16,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from starlette.middleware.cors import CORSMiddleware
 
-_DOCUMENTS_DIR = Path(__file__).parent / "data" / "raw_documents"
+_ROOT = Path(__file__).parent.parent  # repo root
+_DOCUMENTS_DIR = _ROOT / "data" / "raw_documents"
 
 app = FastAPI(title="Regulatory AI Assistant")
 
@@ -24,6 +25,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",   # Vite dev server
+        "http://localhost:4173",   # Vite preview
         "http://localhost:3000",   # Alternative dev port
     ],
     allow_credentials=True,
@@ -61,7 +63,7 @@ async def download_document(filename: str):
 
 
 # Mount Chainlit at /chainlit — React client connects here via WebSocket
-mount_chainlit(app=app, target="app/main.py", path="/chainlit")
+mount_chainlit(app=app, target="app/chainlit_app.py", path="/chainlit")
 
 
 if __name__ == "__main__":

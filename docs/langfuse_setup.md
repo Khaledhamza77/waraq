@@ -56,7 +56,7 @@ LANGFUSE_SECRET_KEY=sk-lf-...
 LANGFUSE_HOST=http://localhost:3000
 ```
 
-The waraq backend reads these at startup. Restart `chainlit run chainlit_app.py` after editing.
+The waraq backend reads these at startup. Restart `uvicorn app.server:app` after editing.
 
 ---
 
