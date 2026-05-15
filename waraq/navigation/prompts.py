@@ -158,3 +158,43 @@ def greeting_system() -> str:
 
 def greeting_prompt(query: str) -> str:
     return query
+
+
+# ── Stage 4b: Section hook rebuild prompts ───────────────────────────────────
+# Used by scripts/rebuild_section_hooks.py.
+# Validated on sections 3–9 of the Egyptian Accounting Standards PDF (208 pages).
+# When onboarding a new document: ensure all non-leaf section nodes in the
+# target range have contents_page (single page int/str) and introduction_pages
+# (list of int/str, may be empty) before running the script.
+
+def rebuild_section_system() -> str:
+    return (
+        "أنت محلل محاسبي متخصص في معايير المحاسبة المصرية. "
+        "مهمتك كتابة وصف موجز ومنظم لقسم رئيسي يتكون من ثلاث جمل بالترتيب التالي تماماً:\n"
+        "يحتوي هذا القسم على: [ملخص فهرس المحتويات]\n"
+        "يتناول هذا القسم: [ملخص المقدمة]\n"
+        "يلخص هذا القسم: [ملخص الأقسام الفرعية]\n"
+        "التزم بهذا الهيكل حرفياً. لا تضف أي نص خارجه."
+    )
+
+
+def rebuild_section_prompt(
+    title: str,
+    toc_content: str | None,
+    intro_content: str | None,
+    child_hooks: list[str],
+) -> str:
+    parts = [f"القسم: {title}"]
+    if toc_content:
+        parts.append(f"فهرس المحتويات:\n{toc_content}")
+    if intro_content:
+        parts.append(f"المقدمة:\n{intro_content}")
+    hooks_text = "\n".join(f"- {h}" for h in child_hooks)
+    parts.append(f"ملخصات الأقسام الفرعية:\n{hooks_text}")
+    parts.append(
+        "اكتب الوصف بالهيكل التالي تماماً:\n"
+        "يحتوي هذا القسم على: [ملخص فهرس المحتويات في جملة واحدة]\n"
+        "يتناول هذا القسم: [ملخص المقدمة في جملة واحدة]\n"
+        "يلخص هذا القسم: [ملخص الأقسام الفرعية في جملة واحدة]"
+    )
+    return "\n\n".join(parts)
