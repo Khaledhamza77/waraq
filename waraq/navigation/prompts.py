@@ -166,39 +166,42 @@ def greeting_prompt(query: str) -> str:
 # When onboarding a new document: ensure all non-leaf section nodes in the
 # target range have contents_page (single page int/str) and introduction_pages
 # (list of int/str, may be empty) before running the script.
+#
+# TOC items are now parsed directly from the page (see parse_toc_from_page in
+# rebuild_section_hooks.py) and injected verbatim — the LLM only summarises the
+# introduction and child hooks to avoid hallucinating table-of-contents entries.
 
-def rebuild_section_system() -> str:
+def rebuild_intro_children_system() -> str:
     return (
         "أنت مساعد تحريري متخصص في وثائق المعايير المحاسبية. "
-        "ستُقدَّم إليك ثلاثة مصادر عن قسم من الوثيقة: فهرس محتوياته، ونص مقدمته، وملخصات أقسامه الفرعية. "
-        "مهمتك توليد نظرة عامة منظمة للقسم تتكون من ثلاثة أجزاء بالترتيب:\n"
-        "١. قائمة بالموضوعات الواردة في فهرس المحتويات.\n"
-        "٢. ملخص موجز لنص المقدمة في جملتين على الأكثر.\n"
-        "٣. ملخص موجز لما تغطيه الأقسام الفرعية مجتمعةً في جملتين على الأكثر.\n"
-        "ابدأ مباشرةً بالجزء الأول. "
-        "لا تكتب مقدمة ولا خاتمة ولا أي تعليق خارج الأجزاء الثلاثة."
+        "ستُقدَّم إليك المصادر المتاحة عن قسم من الوثيقة. "
+        "مهمتك توليد ملخص موجز لكل مصدر مقدَّم — جملتان على الأكثر لكل جزء. "
+        "ابدأ مباشرةً بالمحتوى. "
+        "لا تكتب مقدمة ولا خاتمة ولا أي تعليق خارج الملخصات المطلوبة."
     )
 
 
-def rebuild_section_prompt(
+def rebuild_intro_children_prompt(
     title: str,
-    toc_content: str | None,
     intro_content: str | None,
     child_hooks: list[str],
 ) -> str:
     parts = [f"القسم: {title}"]
-    if toc_content:
-        parts.append(f"فهرس المحتويات:\n{toc_content}")
     if intro_content:
         parts.append(f"نص المقدمة:\n{intro_content}")
     if child_hooks:
         hooks_text = "\n".join(f"- {h}" for h in child_hooks)
         parts.append(f"ملخصات الأقسام الفرعية:\n{hooks_text}")
-    parts.append(
-        "اكتب النظرة العامة في ثلاثة أجزاء بالترتيب:\n"
-        "١. قائمة الموضوعات من فهرس المحتويات\n"
-        "٢. ملخص المقدمة\n"
-        "٣. ملخص الأقسام الفرعية\n"
-        "لا تضف شيئاً آخر."
+
+    # Build instructions only for the sources that are actually present
+    instructions: list[str] = []
+    if intro_content:
+        instructions.append("ملخص موجز لنص المقدمة في جملتين على الأكثر")
+    if child_hooks:
+        instructions.append("ملخص موجز لما تغطيه الأقسام الفرعية مجتمعةً في جملتين على الأكثر")
+
+    numbered = "\n".join(
+        f"{'١' if i == 0 else '٢'}. {inst}" for i, inst in enumerate(instructions)
     )
+    parts.append(f"اكتب:\n{numbered}\nلا تضف شيئاً آخر.")
     return "\n\n".join(parts)

@@ -36,8 +36,9 @@ sys.stdout.reconfigure(encoding="utf-8")
 from tqdm import tqdm
 
 from normalize_hooks import normalize_hook
+from rebuild_section_hooks import parse_toc_from_page
 from waraq.llm.client import get_client
-from waraq.navigation.prompts import rebuild_section_prompt, rebuild_section_system
+from waraq.navigation.prompts import rebuild_intro_children_prompt, rebuild_intro_children_system
 
 TEST_SECTION_ID = "section_4"
 
@@ -61,7 +62,8 @@ def _count_non_leaves(node: dict) -> int:
     children = node.get("children", [])
     if not children:
         return 0
-    return 1 + sum(_count_non_leaves(c) for c in children)
+    skip = not node.get("contents_page") and not node.get("introduction_pages")
+    return (0 if skip else 1) + sum(_count_non_leaves(c) for c in children)
 
 
 # ── Core logic (mirrors rebuild_section_hooks.py — inlined to avoid coupling) ─
@@ -75,10 +77,13 @@ def process_node(node: dict, client, bar: tqdm) -> None:
     if not children:
         return  # leaf — skip
 
+    if not node.get("contents_page") and not node.get("introduction_pages"):
+        return  # no document pages — skip (mirrors main script behaviour)
+
     node_id = node.get("id", "?")
 
     toc_page = node.get("contents_page")
-    toc_content = read_page_list([toc_page]) if toc_page else None
+    toc_raw = read_page_list([toc_page]) if toc_page else ""
 
     intro_pages = node.get("introduction_pages") or []
     intro_content = read_page_list(intro_pages) if intro_pages else None
@@ -86,22 +91,33 @@ def process_node(node: dict, client, bar: tqdm) -> None:
     child_hooks = [c["hook"] for c in children if c.get("hook")]
 
     bar.set_postfix_str(f"rebuilding: {node_id}", refresh=True)
-    try:
-        hook = client.complete(
-            prompt=rebuild_section_prompt(
-                title=node.get("title", ""),
-                toc_content=toc_content,
-                intro_content=intro_content,
-                child_hooks=child_hooks,
-            ),
-            system=rebuild_section_system(),
-            think=True,
-        )
-    except Exception as exc:
-        bar.write(f"\nERROR on {node_id}: {exc}")
-        sys.exit(1)
 
-    node["hook"] = normalize_hook(hook)
+    # Parse TOC items directly from the page — no LLM
+    toc_items = parse_toc_from_page(toc_raw) if toc_raw else []
+
+    llm_output = ""
+    if intro_content or child_hooks:
+        try:
+            llm_output = client.complete(
+                prompt=rebuild_intro_children_prompt(
+                    title=node.get("title", ""),
+                    intro_content=intro_content,
+                    child_hooks=child_hooks,
+                ),
+                system=rebuild_intro_children_system(),
+                think=True,
+            )
+        except Exception as exc:
+            bar.write(f"\nERROR on {node_id}: {exc}")
+            sys.exit(1)
+
+    hook_parts: list[str] = []
+    if toc_items:
+        hook_parts.append("الموضوعات: " + " | ".join(toc_items))
+    if llm_output.strip():
+        hook_parts.append(llm_output.strip())
+
+    node["hook"] = normalize_hook("\n".join(hook_parts))
     bar.update(1)
 
 
@@ -146,8 +162,15 @@ def main() -> None:
 
     def check_node(node: dict) -> None:
         nonlocal passed, failed
-        if not node.get("children"):
+        children = node.get("children", [])
+        if not children:
             return  # leaves not checked
+
+        # Mirror skip condition from process_node — don't assert on nodes that weren't rebuilt
+        if not node.get("contents_page") and not node.get("introduction_pages"):
+            for child in children:
+                check_node(child)
+            return
 
         node_id = node.get("id", "?")
         hook = node.get("hook") or ""
@@ -167,7 +190,7 @@ def main() -> None:
             print(f"        {hook[:300]}{'...' if len(hook) > 300 else ''}\n")
             passed += 1
 
-        for child in node.get("children", []):
+        for child in children:
             check_node(child)
 
     check_node(test_section)
