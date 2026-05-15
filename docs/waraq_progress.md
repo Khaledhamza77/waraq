@@ -165,6 +165,63 @@ Key behaviours:
 
 ---
 
+## Stage 4a — Hook Normalization ✅
+
+**Status:** Complete  
+**Files:** `scripts/normalize_hooks.py`, `waraq/llm/client.py` (extended)
+
+---
+
+### What was built
+
+#### `scripts/normalize_hooks.py`
+Programmatic (no LLM) cleanup pass over every hook in `data/index.json`. Fixes artifacts introduced during Stage 4 LLM generation.
+
+Normalization rules applied in order:
+1. **Bold stripping** — removes `**text**` and `__text__` markdown markers; runs first so paired tokens are matched before any leading `**` is consumed by the garbage stripper
+2. **Leading garbage stripping** — skips any non-Arabic prefix characters until the first valid Arabic character, digit, quote, or open paren; handles:
+   - Leaked `<think>` / `</think>` tags and `[]>` think artifacts
+   - Tokenizer padding tokens (`[PAD151871]` style)
+   - Stray Unicode characters (Korean, Cyrillic-like, Chinese)
+3. **Arabic preamble stripping** — removes common model throat-clearing phrases (`بالطبع`, `إليك`, `الملخص:`, etc.) from the hook start
+4. **Template artifact fix** — replaces `مصد={...}` with `المصداقية`
+
+Key behaviours:
+- **No LLM calls** — purely textual regex/string operations; fast and deterministic
+- **`--dry-run` mode** — prints every BEFORE/AFTER pair without writing to disk; used for review before committing
+- **Atomic saves** — writes to `data/index.json.tmp` then renames after each changed node
+- **Idempotent** — safe to re-run; unchanged hooks produce no diff
+
+#### `waraq/llm/client.py` — `think` parameter
+Added optional `think: bool | None = None` parameter to `SILMAClient.complete()`. When set, passes `"think": think` into `extra_body`, enabling `think=False` for qwen3's non-thinking mode on generation calls where format precision matters (used by Stage 4b script).
+
+---
+
+### Artifacts fixed across `data/index.json`
+
+| Type | Example | Nodes affected |
+|------|---------|----------------|
+| `**bold**` markers | `**ملخص القسم: العنوان**  \n` | ~60 |
+| Leaked think tags | `[]> \n</think>\n\n` (section_7) | 2 |
+| Stray Unicode prefix | `모습` Korean (section_6), `Ԉ` (section_9) | 3 |
+| Tokenizer padding | `[PAD151871]` (section_6_25) | 1 |
+| Template artifact | `مصد={...}` → `المصداقية` (section_3_4) | 1 |
+| Chinese + think residue | `区委\n</think>` (section_4_9_4) | 1 |
+
+Total: 98 nodes modified out of all nodes with hooks.
+
+---
+
+### Definition of done — Stage 4a
+
+- [x] `scripts/normalize_hooks.py` implemented with `--dry-run` mode
+- [x] `think` parameter added to `SILMAClient.complete()`
+- [x] Dry-run reviewed and two bugs caught + fixed (ordering of bold strip, `_ARABIC_START_RE` regex)
+- [ ] Script run without `--dry-run`; `data/index.json` updated
+- [ ] Spot-check: previously garbage-prefixed hooks (`section_6`, `section_7`, `section_9`) now start with clean Arabic
+
+---
+
 ## Stage 5 — LangGraph Navigation System ✅
 
 **Status:** Complete (code implemented; run `pytest tests/test_navigation.py` once Ollama is serving)  

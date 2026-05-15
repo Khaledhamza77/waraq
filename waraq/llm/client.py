@@ -89,18 +89,23 @@ class SILMAClient:
         system: str = "",
         temperature: float = 0.1,
         max_tokens: int = 2048,
+        think: bool | None = None,
     ) -> str:
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
+        extra: dict[str, Any] = {"num_ctx": 32768}
+        if think is not None:
+            extra["think"] = think
+
         response = self._client.chat.completions.create(
             model=self._model,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
-            extra_body={"num_ctx": 32768},
+            extra_body=extra,
         )
         raw = response.choices[0].message.content or ""
         usage = response.usage
