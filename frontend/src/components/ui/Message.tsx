@@ -49,7 +49,7 @@ export const Message: React.FC<MessageProps> = React.memo(({
       >
         {children}
         {/* prose-invert: light colors on dark bg; typography plugin handles sizing */}
-        <div className="prose prose-invert max-w-none">
+        <div className="prose prose-invert max-w-none" dir="auto">
           <ReactMarkdown
             remarkPlugins={remarkPlugins}
             rehypePlugins={rehypePlugins}
