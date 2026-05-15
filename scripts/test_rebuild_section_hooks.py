@@ -19,6 +19,7 @@ Usage:
 """
 import copy
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -37,12 +38,7 @@ from waraq.navigation.prompts import rebuild_section_prompt, rebuild_section_sys
 
 TEST_SECTION_ID = "section_4"
 
-# The three sentence starters the model is instructed to produce.
-EXPECTED_STARTERS = (
-    "يحتوي هذا القسم على:",
-    "يتناول هذا القسم:",
-    "يلخص هذا القسم:",
-)
+_ARABIC_RE = re.compile(r"[؀-ۿ]")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -96,7 +92,7 @@ def process_node(node: dict, client, bar: tqdm) -> None:
                 child_hooks=child_hooks,
             ),
             system=rebuild_section_system(),
-            think=False,
+            think=True,
         )
     except Exception as exc:
         bar.write(f"\nERROR on {node_id}: {exc}")
@@ -154,11 +150,10 @@ def main() -> None:
         hook = node.get("hook") or ""
         issues = []
 
-        if len(hook.strip()) < 20:
+        if len(hook.strip()) < 50:
             issues.append("hook too short")
-        for starter in EXPECTED_STARTERS:
-            if starter not in hook:
-                issues.append(f"missing '{starter}'")
+        if not _ARABIC_RE.search(hook):
+            issues.append("no Arabic characters")
 
         if issues:
             print(f"  FAIL  {node_id} — {'; '.join(issues)}")

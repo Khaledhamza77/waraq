@@ -129,7 +129,7 @@ def process_node(
                 child_hooks=child_hooks,
             ),
             system=rebuild_section_system(),
-            think=False,
+            think=True,
         )
     except Exception as exc:
         bar.write(f"\nERROR on {node_id}: {exc}")
