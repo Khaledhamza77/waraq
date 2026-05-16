@@ -37,6 +37,7 @@ _SECTION_CHUNKS_PATH = _ROOT / "data" / "section_chunks.json"
 _pdf_doc:        fitz.Document | None = None
 _index_data:     dict | None = None
 _section_chunks: dict | None = None
+_excluded_pages: set[int] | None = None
 
 # In-memory page-image cache  {page_num: png_bytes}
 _page_cache: dict[int, bytes] = {}
@@ -58,6 +59,28 @@ def _get_index() -> dict:
     if _index_data is None:
         _index_data = json.loads(_INDEX_PATH.read_text(encoding="utf-8"))
     return _index_data
+
+
+def _collect_excluded_pages(sections: list) -> set[int]:
+    """Recursively collect page numbers from sections titled 'فهرس ومقدمة'."""
+    pages: set[int] = set()
+    for section in sections:
+        if section.get("title") == "فهرس ومقدمة":
+            start = section.get("start_page")
+            end = section.get("end_page")
+            if start is not None and end is not None:
+                pages.update(range(int(start), int(end) + 1))
+        if "children" in section:
+            pages |= _collect_excluded_pages(section["children"])
+    return pages
+
+
+def _get_excluded_pages() -> set[int]:
+    global _excluded_pages
+    if _excluded_pages is None:
+        index = _get_index()
+        _excluded_pages = _collect_excluded_pages(index.get("sections", []))
+    return _excluded_pages
 
 
 def _get_section_chunks() -> dict:
@@ -137,4 +160,10 @@ async def explorer_section_chunks(section_id: str) -> Any:
         )
     if section_id not in chunks_map:
         raise HTTPException(status_code=404, detail=f"Section '{section_id}' not found")
-    return chunks_map[section_id]
+
+    section_data = chunks_map[section_id]
+    excluded = _get_excluded_pages()
+    if excluded:
+        filtered_chunks = [c for c in section_data.get("chunks", []) if c.get("page") not in excluded]
+        return {**section_data, "chunks": filtered_chunks}
+    return section_data
