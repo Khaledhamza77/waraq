@@ -222,3 +222,4 @@ uv.lock
 data/postgres
 frontend/node_modules
 frontend/dist
+.chainlit
