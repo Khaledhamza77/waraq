@@ -115,6 +115,15 @@ async def explorer_page(page_num: int) -> Response:
     )
 
 
+@router.get("/sections")
+async def explorer_sections() -> list[str]:
+    """Return list of section IDs that have chunk data in section_chunks.json."""
+    try:
+        return list(_get_section_chunks().keys())
+    except FileNotFoundError:
+        return []
+
+
 @router.get("/section/{section_id}/chunks")
 async def explorer_section_chunks(section_id: str) -> Any:
     """Return all chunks (with bbox + markdown) for a section."""

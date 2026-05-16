@@ -2,11 +2,13 @@
 Build data/section_chunks.json
 
 Source of truth: data/bbox_map.json — only sections with non-null start_box/end_box
-get entries.  For each such section the page range is [start_box.page, end_box.page].
+get entries.  start_box.chunk_id and end_box.chunk_id are the first and last chunks
+belonging to that section in document order.
 
-All output.json chunks whose grounding.page falls in that range are collected as the
-section's chunks.  data/index.json is used solely to enrich each section with its
-title and hook (for display in the explorer sidebar).
+output.json preserves document order, so we build a flat ordered list once and slice
+[start_idx : end_idx + 1] for each section — no page-range approximation.
+
+data/index.json is used solely to enrich each section with its title and hook.
 
 Output schema:
 {
@@ -35,7 +37,10 @@ Run once (idempotent — overwrites on re-run):
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+sys.stdout.reconfigure(encoding="utf-8")
 
 ROOT = Path(__file__).parent.parent
 BBOX_MAP_FILE = ROOT / "data" / "bbox_map.json"
@@ -65,53 +70,65 @@ def main() -> None:
     print("Loading output.json …")
     output = json.loads(OUTPUT_FILE.read_text(encoding="utf-8"))
 
-    # Build page → ordered list of chunks
-    page_to_chunks: dict[int, list[dict]] = {}
-    for chunk in output["chunks"]:
-        page: int = chunk["grounding"]["page"]
-        page_to_chunks.setdefault(page, []).append(
-            {
-                "chunk_id": chunk["id"],
-                "page": page,
-                "box": chunk["grounding"]["box"],
-                "markdown": chunk.get("markdown", ""),
-                "type": chunk["type"],
-            }
-        )
+    # Flat ordered list of chunks in document order (output.json preserves this).
+    # Also build a chunk_id → position index for O(1) lookup.
+    all_chunks: list[dict] = []
+    chunk_id_to_index: dict[str, int] = {}
+    for i, chunk in enumerate(output["chunks"]):
+        all_chunks.append({
+            "chunk_id": chunk["id"],
+            "page":     chunk["grounding"]["page"],
+            "box":      chunk["grounding"]["box"],
+            "markdown": chunk.get("markdown", ""),
+            "type":     chunk["type"],
+        })
+        chunk_id_to_index[chunk["id"]] = i
 
-    # Build section_chunks from bbox_map as source of truth
+    # Build section_chunks by slicing the ordered chunk list between start and end IDs.
     result: dict[str, dict] = {}
-    skipped_null = 0
+    skipped_null    = 0
+    skipped_missing = 0
+
     for section_id, bbox_entry in bbox_map.items():
         start_box = bbox_entry.get("start_box")
         end_box   = bbox_entry.get("end_box")
 
         if start_box is None or end_box is None:
             skipped_null += 1
-            continue  # no page info for this section
+            continue
 
-        start_page: int = start_box["page"]
-        end_page: int   = end_box["page"]
+        start_chunk_id = start_box["chunk_id"]
+        end_chunk_id   = end_box["chunk_id"]
 
-        # Collect every chunk on pages in [start_page, end_page]
-        chunks: list[dict] = []
-        for p in range(start_page, end_page + 1):
-            chunks.extend(page_to_chunks.get(p, []))
+        start_idx = chunk_id_to_index.get(start_chunk_id)
+        end_idx   = chunk_id_to_index.get(end_chunk_id)
+
+        if start_idx is None or end_idx is None:
+            print(f"  WARNING: chunk not found for section {section_id} "
+                  f"(start={start_chunk_id}, end={end_chunk_id})")
+            skipped_missing += 1
+            continue
+
+        if start_idx > end_idx:
+            print(f"  WARNING: start_idx > end_idx for section {section_id}, swapping")
+            start_idx, end_idx = end_idx, start_idx
 
         meta = id_to_meta.get(section_id, {"title": section_id, "hook": ""})
         result[section_id] = {
             "title":      meta["title"],
             "hook":       meta["hook"],
-            "start_page": start_page,
-            "end_page":   end_page,
-            "chunks":     chunks,
+            "start_page": start_box["page"],
+            "end_page":   end_box["page"],
+            "chunks":     all_chunks[start_idx : end_idx + 1],
         }
 
     print(f"Skipped {skipped_null} sections with null bbox entries.")
+    if skipped_missing:
+        print(f"Skipped {skipped_missing} sections with missing chunk IDs.")
     print(f"Built data for {len(result)} sections …")
     OUT_FILE.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
     total_chunks = sum(len(v["chunks"]) for v in result.values())
-    print(f"Done. {len(result)} sections / {total_chunks} chunk-section pairs → {OUT_FILE}")
+    print(f"Done. {len(result)} sections / {total_chunks} chunk-section pairs -> {OUT_FILE}")
 
 
 if __name__ == "__main__":

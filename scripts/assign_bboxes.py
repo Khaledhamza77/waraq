@@ -168,46 +168,65 @@ def main():
 
     # ------------------------------------------------------------------
     # Step 1: find start chunk index for each unit
+    #
+    # Sequential cursor: once unit N matches at index k, unit N+1 starts
+    # searching from k+1.  This guarantees non-overlapping, contiguous
+    # assignments and prevents two units from matching the same chunk.
     # ------------------------------------------------------------------
+    search_from = 0  # never search before this index
+
     for unit in units:
         title_norm = normalize_ar(unit["title"])
         title_flat = normalize_ar_flat(unit["title"])
         matched_idx = None
         matched_via = None
 
-        for i, chunk in enumerate(chunks):
-            page = chunk["grounding"]["page"]
-            if page < unit["start_page"]:
-                continue
+        # Pass 1: line-anchored, from search_from up to end_page
+        for i in range(search_from, len(chunks)):
+            page = chunks[i]["grounding"]["page"]
             if page > unit["end_page"]:
                 break
-            if GAZETTE_MARKER in chunk["markdown"]:
+            if GAZETTE_MARKER in chunks[i]["markdown"]:
                 continue
-
-            # Pass 1: line-anchored
-            if match_pass1(title_norm, chunk["markdown"]) >= 0:
+            if match_pass1(title_norm, chunks[i]["markdown"]) >= 0:
                 matched_idx = i
                 matched_via = "line"
                 break
 
-        # Pass 2 fallback: flattened substring (only if pass 1 found nothing)
+        # Pass 2 fallback: flattened substring, from search_from up to end_page
         if matched_idx is None:
-            for i, chunk in enumerate(chunks):
-                page = chunk["grounding"]["page"]
-                if page < unit["start_page"]:
-                    continue
+            for i in range(search_from, len(chunks)):
+                page = chunks[i]["grounding"]["page"]
                 if page > unit["end_page"]:
                     break
-                if GAZETTE_MARKER in chunk["markdown"]:
+                if GAZETTE_MARKER in chunks[i]["markdown"]:
                     continue
-
-                if match_pass2(title_flat, chunk["markdown"]):
+                if match_pass2(title_flat, chunks[i]["markdown"]):
                     matched_idx = i
                     matched_via = "flat"
                     break
 
+        # Pass 3 look-back: the previous section consumed a chunk that also
+        # contains this title (parser merged two consecutive section headings
+        # into one chunk).  Re-use that chunk as the start without advancing
+        # the cursor further.
+        if matched_idx is None and search_from > 0:
+            prev_chunk = chunks[search_from - 1]
+            if (prev_chunk["grounding"]["page"] <= unit["end_page"]
+                    and GAZETTE_MARKER not in prev_chunk["markdown"]):
+                if match_pass1(title_norm, prev_chunk["markdown"]) >= 0:
+                    matched_idx = search_from - 1
+                    matched_via = "look-back-line"
+                elif match_pass2(title_flat, prev_chunk["markdown"]):
+                    matched_idx = search_from - 1
+                    matched_via = "look-back-flat"
+
         unit["start_idx"] = matched_idx
         unit["match_via"] = matched_via
+
+        # Advance cursor so the next unit never matches the same or earlier chunk
+        if matched_idx is not None:
+            search_from = matched_idx + 1
 
     # ------------------------------------------------------------------
     # Step 2: assign bounding boxes
@@ -215,6 +234,7 @@ def main():
     bbox_map = {}
     unmatched = []
     flat_matches = []
+    lookback_matches = []
 
     for i, unit in enumerate(units):
         if unit["start_idx"] is None:
@@ -223,6 +243,8 @@ def main():
         else:
             if unit["match_via"] == "flat":
                 flat_matches.append(unit)
+            elif unit["match_via"] in ("look-back-line", "look-back-flat"):
+                lookback_matches.append(unit)
 
             start_chunk = chunks[unit["start_idx"]]
             start_box = {
@@ -231,10 +253,14 @@ def main():
                 "box": start_chunk["grounding"]["box"],
             }
 
-            # End box = chunk just before next matched unit's start chunk.
+            # End box = chunk just before the next unit that starts at a
+            # strictly later chunk.  Skipping units that share this unit's
+            # start_idx ensures all co-located sections (titles merged into
+            # the same chunk by the parser) get the same end_box.
             next_start_idx = None
             for j in range(i + 1, len(units)):
-                if units[j]["start_idx"] is not None:
+                if (units[j]["start_idx"] is not None
+                        and units[j]["start_idx"] > unit["start_idx"]):
                     next_start_idx = units[j]["start_idx"]
                     break
 
@@ -272,12 +298,19 @@ def main():
     )
 
     matched = len(units) - len(unmatched)
+    line_only = matched - len(flat_matches) - len(lookback_matches)
     print(f"\nMatched   : {matched}/{len(units)} units")
-    print(f"  via line-anchor : {matched - len(flat_matches)}")
-    print(f"  via flat-substr : {len(flat_matches)}")
+    print(f"  via line-anchor  : {line_only}")
+    print(f"  via flat-substr  : {len(flat_matches)}")
+    print(f"  via look-back    : {len(lookback_matches)}")
     print(f"Unmatched : {len(unmatched)}/{len(units)} units")
     print(f"Leaf entries written : {len(bbox_map)}")
     print(f"Output : {MAP_FILE}")
+
+    if lookback_matches:
+        print("\n--- LOOK-BACK MATCHES (title merged into previous section's chunk) ---")
+        for u in lookback_matches:
+            print(f"  {u['ids'][0] if len(u['ids'])==1 else u['ids']} | {u['title']!r} | pages {u['start_page']}-{u['end_page']} | via {u['match_via']}")
 
     if flat_matches:
         print("\n--- FLAT-SUBSTRING MATCHES (verify these) ---")

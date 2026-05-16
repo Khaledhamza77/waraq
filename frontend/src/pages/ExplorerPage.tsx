@@ -201,14 +201,14 @@ interface TocNodeProps {
   expandedIds: Set<string>;
   onSelect: (s: Section) => void;
   onToggle: (id: string) => void;
-  availableIds: Set<string>; // sections that exist in section_chunks.json
+  bboxIds: Set<string>; // sections that have bbox chunk data
 }
 
-function TocNode({ section, depth, selectedId, expandedIds, onSelect, onToggle, availableIds }: TocNodeProps) {
+function TocNode({ section, depth, selectedId, expandedIds, onSelect, onToggle, bboxIds }: TocNodeProps) {
   const isSelected = selectedId === section.id;
   const isExpanded = expandedIds.has(section.id);
   const hasChildren = (section.children?.length ?? 0) > 0;
-  const isAvailable = availableIds.has(section.id);
+  const hasBbox = bboxIds.has(section.id);
   const color = sectionColor(section.id);
 
   return (
@@ -216,14 +216,14 @@ function TocNode({ section, depth, selectedId, expandedIds, onSelect, onToggle, 
       <div
         style={{
           display: "flex",
-          alignItems: "flex-start",
+          alignItems: "center",
           gap: 6,
           // In RTL the right side is the start (indent side); left is the end.
           padding: `5px ${14 + depth * 14}px 5px 12px`,
           cursor: "pointer",
           background: isSelected ? `${color}18` : "transparent",
           borderRight: isSelected ? `2px solid ${color}` : "2px solid transparent",
-          color: isSelected ? color : isAvailable ? "#C4C9E8" : "#4A4F6E",
+          color: isSelected ? color : "#C4C9E8",
           fontFamily: FONT,
           fontSize: depth === 0 ? 13 : 12,
           fontWeight: isSelected ? 700 : depth === 0 ? 600 : 400,
@@ -242,24 +242,55 @@ function TocNode({ section, depth, selectedId, expandedIds, onSelect, onToggle, 
           if (!isSelected) e.currentTarget.style.background = "transparent";
         }}
       >
-        {hasChildren && (
+        {/* Expand arrow — first flex item in RTL (appears on the right) */}
+        {hasChildren ? (
           <span
             style={{
               fontSize: 9,
-              marginTop: 4,
               minWidth: 10,
               display: "inline-block",
               transition: "transform 0.15s",
               transform: isExpanded ? "rotate(90deg)" : "rotate(0deg)",
               color: "#6B7280",
+              flexShrink: 0,
             }}
           >
             ▶
           </span>
+        ) : (
+          <span style={{ minWidth: 10, display: "inline-block", flexShrink: 0 }} />
         )}
-        {!hasChildren && <span style={{ minWidth: 10, display: "inline-block" }} />}
+
+        {/* Section title */}
         <span style={{ flex: 1, direction: "rtl", textAlign: "right" }}>
           {section.title}
+        </span>
+
+        {/* Page number + bbox dot — last flex item in RTL (appears on the left) */}
+        <span
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            flexShrink: 0,
+            fontSize: 10,
+            color: isSelected ? color : "#4A4F6E",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        >
+          {hasBbox && (
+            <span
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: isSelected ? color : `${color}90`,
+                display: "inline-block",
+                flexShrink: 0,
+              }}
+            />
+          )}
+          {section.start_page !== undefined && section.start_page}
         </span>
       </div>
 
@@ -273,7 +304,7 @@ function TocNode({ section, depth, selectedId, expandedIds, onSelect, onToggle, 
             expandedIds={expandedIds}
             onSelect={onSelect}
             onToggle={onToggle}
-            availableIds={availableIds}
+            bboxIds={bboxIds}
           />
         ))}
     </div>
@@ -396,14 +427,14 @@ function ContentPanel({ chunk, color, onClose }: ContentPanelProps) {
 export default function ExplorerPage() {
   const navigate = useNavigate();
 
-  const [indexData, setIndexData]             = useState<IndexData | null>(null);
-  const [availableIds, setAvailableIds]       = useState<Set<string>>(new Set());
-  const [selectedId, setSelectedId]           = useState<string | null>(null);
-  const [sectionData, setSectionData]         = useState<SectionChunkData | null>(null);
-  const [activeChunk, setActiveChunk]         = useState<Chunk | null>(null);
-  const [expandedIds, setExpandedIds]         = useState<Set<string>>(new Set());
-  const [loadingSection, setLoadingSection]   = useState(false);
-  const [error, setError]                     = useState<string | null>(null);
+  const [indexData, setIndexData]           = useState<IndexData | null>(null);
+  const [bboxIds, setBboxIds]               = useState<Set<string>>(new Set());
+  const [selectedId, setSelectedId]         = useState<string | null>(null);
+  const [sectionData, setSectionData]       = useState<SectionChunkData | null>(null);
+  const [activeChunk, setActiveChunk]       = useState<Chunk | null>(null);
+  const [expandedIds, setExpandedIds]       = useState<Set<string>>(new Set());
+  const [loadingSection, setLoadingSection] = useState(false);
+  const [error, setError]                   = useState<string | null>(null);
 
   // Fetch index on mount
   useEffect(() => {
@@ -413,26 +444,13 @@ export default function ExplorerPage() {
       .catch(() => setError("تعذّر تحميل فهرس الوثيقة"));
   }, []);
 
-  // Fetch available section ids (just the keys of section_chunks.json)
-  // We infer them lazily — a 404 means the section isn't in the map
-  // For the TOC, we mark top-level sections as available if they have children with bbox data.
-  // Simpler approach: fetch a lightweight manifest once.
+  // Fetch section IDs that have bbox chunk data
   useEffect(() => {
-    // We don't have a dedicated manifest endpoint, so we infer from the index:
-    // sections with start_page are likely leaves = available.
-    // Parent sections are available if they have at least one leaf descendant.
-    if (!indexData) return;
-
-    const ids = new Set<string>();
-    function mark(nodes: Section[]) {
-      for (const n of nodes) {
-        if (n.start_page !== undefined) ids.add(n.id);
-        if (n.children?.length) mark(n.children);
-      }
-    }
-    mark(indexData.sections);
-    setAvailableIds(ids);
-  }, [indexData]);
+    fetch(`${API_BASE}/explorer/sections`)
+      .then((r) => r.json())
+      .then((ids: string[]) => setBboxIds(new Set(ids)))
+      .catch(() => {}); // bbox data is optional — silent failure is fine
+  }, []);
 
   // Chunk lookup: page → chunks[]
   const pageChunks = React.useMemo<Map<number, Chunk[]>>(() => {
@@ -461,24 +479,29 @@ export default function ExplorerPage() {
       setSelectedId(section.id);
       setActiveChunk(null);
       setSectionData(null);
-      setLoadingSection(true);
       setError(null);
 
+      // Always navigate to the section's start_page from the index
+      if (section.start_page !== undefined) {
+        setTimeout(() => {
+          document
+            .getElementById(`page-${section.start_page}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 80);
+      }
+
+      // Only fetch bbox chunks for sections that have them
+      if (!bboxIds.has(section.id)) return;
+
+      setLoadingSection(true);
       try {
         const res = await fetch(`${API_BASE}/explorer/section/${section.id}/chunks`);
-        if (!res.ok) {
-          if (res.status === 404) {
-            setError(`لا توجد بيانات مربوطة بهذا القسم`);
-            setLoadingSection(false);
-            return;
-          }
-          throw new Error(`HTTP ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data: SectionChunkData = await res.json();
         setSectionData(data);
 
-        // Scroll to first page of this section
-        if (data.chunks.length > 0) {
+        // If no start_page in index, fall back to first chunk page for navigation
+        if (section.start_page === undefined && data.chunks.length > 0) {
           const firstPage = Math.min(...data.chunks.map((c) => c.page));
           setTimeout(() => {
             document
@@ -492,7 +515,7 @@ export default function ExplorerPage() {
         setLoadingSection(false);
       }
     },
-    [selectedId]
+    [selectedId, bboxIds]
   );
 
   const handleToggle = useCallback((id: string) => {
@@ -656,7 +679,7 @@ export default function ExplorerPage() {
                   expandedIds={expandedIds}
                   onSelect={handleSectionSelect}
                   onToggle={handleToggle}
-                  availableIds={availableIds}
+                  bboxIds={bboxIds}
                 />
               ))}
             </div>
