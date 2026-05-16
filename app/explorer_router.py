@@ -163,7 +163,14 @@ async def explorer_section_chunks(section_id: str) -> Any:
 
     section_data = chunks_map[section_id]
     excluded = _get_excluded_pages()
-    if excluded:
-        filtered_chunks = [c for c in section_data.get("chunks", []) if c.get("page") not in excluded]
-        return {**section_data, "chunks": filtered_chunks}
-    return section_data
+
+    def _is_visible(chunk: dict) -> bool:
+        if chunk.get("page") in excluded:
+            return False
+        # Drop gazette running-header that repeats on every page
+        if "الوقائع المصرية" in chunk.get("markdown", ""):
+            return False
+        return True
+
+    filtered_chunks = [c for c in section_data.get("chunks", []) if _is_visible(c)]
+    return {**section_data, "chunks": filtered_chunks}
