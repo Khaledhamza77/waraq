@@ -1,38 +1,70 @@
 // components/ui/top-bar.tsx
 import * as React from "react";
-import { cn } from "@/lib/utils";
+import { useNavigate } from "react-router-dom";
 
-export interface TopBarProps {
-  title: string;
-  rightTag?: string;
-  className?: string;
-}
+const font = "'Almarai', sans-serif";
 
-export const TopBar: React.FC<TopBarProps> = ({
-  title,
-  rightTag,
-  className,
-}) => {
+export const TopBar: React.FC = () => {
+  const navigate = useNavigate();
+
   return (
     <div
-      className={cn(
-        `
-        w-full h-16
-        flex items-center justify-between
-        px-6 md:px-10
-        bg-gradient-to-b from-[#0c0e18] to-[#0a0f1f]
-        text-gray-100
-        relative z-20
-      `,
-        className
-      )}
+      dir="rtl"
+      style={{
+        position: "sticky",
+        top: 20,
+        zIndex: 100,
+        padding: "0 32px",
+        display: "flex",
+        justifyContent: "center",
+      }}
     >
-      <div className="text-lg font-semibold">{title}</div>
-      {rightTag && (
-        <div className="text-xs uppercase tracking-wider text-gray-300">
-          {rightTag}
-        </div>
-      )}
+      <nav
+        style={{
+          height: 68,
+          width: "100%",
+          maxWidth: 1060,
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(20px)",
+          WebkitBackdropFilter: "blur(20px)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 8,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(255,255,255,0.04)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 32px",
+        }}
+      >
+        <img
+          src="/powered_by_finaira.png"
+          alt="Finaira"
+          style={{ height: 30, width: "auto" }}
+        />
+
+        <button
+          onClick={() => navigate("/")}
+          style={{
+            border: "none",
+            background: "transparent",
+            color: "rgba(255,255,255,0.5)",
+            fontFamily: font,
+            fontWeight: 600,
+            fontSize: 15,
+            padding: "8px 4px",
+            cursor: "pointer",
+            transition: "color 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = "#ffffff";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = "rgba(255,255,255,0.5)";
+          }}
+        >
+          الرئيسية
+        </button>
+      </nav>
     </div>
   );
 };

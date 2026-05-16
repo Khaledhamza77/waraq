@@ -516,12 +516,69 @@ CHAINLIT_AUTH_SECRET=          # any random string, required for auth callbacks
 
 ---
 
+## Stage 10 — Document Explorer
+
+**Goal:** A full-screen document viewer at `/explorer` where users can browse the 208-page PDF, see bounding-box highlights for every section as they scroll, navigate via a TOC sidebar, and click any highlighted region to read its extracted markdown content.
+
+**Definition of done:** The explorer page loads, TOC shows the full section hierarchy, clicking any section scrolls the document to its first page and overlays all its chunk bounding boxes in the app's accent colors, clicking a bbox shows the chunk's markdown content in a bottom panel, and deselecting clears all highlights.
+
+### Step 10a — Pre-processing (`scripts/build_section_chunks.py`)
+
+**Input:** `data/parsed/output.json` + `data/index.json`
+**Output:** `data/section_chunks.json` — `{ section_id: [{chunk_id, page, box, markdown, type}] }`
+
+For each section node (leaf or parent), compute its page range: leaf nodes use their `start_page`/`end_page` directly; parent nodes derive the range from the min/max of all leaf descendants. Then collect every chunk from `output.json` whose `grounding.page` falls within that range.
+
+Run once: `python scripts/build_section_chunks.py`
+
+### Step 10b — Backend Explorer API (`app/explorer_router.py`)
+
+Three endpoints mounted under `/explorer`:
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/explorer/index` | Returns `data/index.json` (section tree) |
+| `GET` | `/explorer/page/{page_num}` | Renders PDF page as PNG via PyMuPDF at 1.5× zoom; in-memory cache |
+| `GET` | `/explorer/section/{section_id}/chunks` | Returns chunks list from `section_chunks.json` |
+
+**PyMuPDF note:** Try `import pymupdf as fitz` first, fall back to `import fitz`.
+
+### Step 10c — Frontend (`frontend/src/pages/ExplorerPage.tsx`)
+
+**Layout (3-zone, dark theme):**
+```
+┌──────────────────────────────────────────────────────┐
+│ Header: waraq logo + "العودة للمحادثة" back button   │
+├──────────────────────────────────────┬───────────────┤
+│ Document Viewer (flex:1, overflow-y) │ TOC (280px)   │
+│  • 208 pages stacked vertically      │  RTL sidebar  │
+│  • img src="/explorer/page/{n}"      │  tree expand  │
+│  • bbox divs overlaid (% coords)     │  per-section  │
+│    color-coded by top-level section  │  accent color │
+└──────────────────────────────────────┴───────────────┘
+│ Content Panel (position:fixed, bottom, 40vh)         │
+│  ReactMarkdown of clicked chunk  [✕]                │
+└──────────────────────────────────────────────────────┘
+```
+
+**Behavior:**
+- On mount: fetch `/explorer/index`, populate TOC tree
+- TOC click: fetch section chunks → scroll to first chunk page → overlay bboxes. Re-clicking deselects.
+- Bbox hover: highlight ring. Bbox click: open content panel with chunk markdown.
+- Content panel X or another section click: close panel.
+- Page images use `loading="lazy"` for native browser lazy-load.
+
+**Color palette by top-level section:**
+`section_1=#94A3B8, section_2=#22D3EE, section_3=#A78BFA, section_4=#60A5FA, section_5=#C084FC, section_6=#34D399, section_7=#FBBF24, section_8=#F87171, section_9=#4ADE80`
+
+---
+
 ## Development Order
 
 Build and validate each stage before starting the next. Do not parallelize — each stage is a dependency of the next.
 
 ```
-Stage 1 → Stage 2 → Stage 3 → Stage 4 → Stage 5 → Stage 6 → Stage 7 → Stage 8 → Stage 9
+Stage 1 → Stage 2 → Stage 3 → Stage 4 → Stage 5 → Stage 6 → Stage 7 → Stage 8 → Stage 9 → Stage 10
 ```
 
 Exception: Stage 1 (ingestion) can run in the background while Stage 2 (manual mapping) is being authored.

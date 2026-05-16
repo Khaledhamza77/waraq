@@ -5,6 +5,7 @@ import rehypeRaw from "rehype-raw";
 import { cn } from "@/lib/utils";
 import remarkBreaks from "remark-breaks";
 import { MermaidDiagram } from "./MermaidDiagram";
+import { useNavigate } from "react-router-dom";
 
 export type MessageAlignment = "left" | "right";
 
@@ -32,6 +33,7 @@ export const Message: React.FC<MessageProps> = React.memo(({
   children,
 }) => {
   const isRight = align === "right";
+  const navigate = useNavigate();
 
   return (
     <div
@@ -47,7 +49,6 @@ export const Message: React.FC<MessageProps> = React.memo(({
           bubbleClassName,
         )}
       >
-        {children}
         {/* prose-invert: light colors on dark bg; typography plugin handles sizing */}
         <div className="prose prose-invert max-w-none" dir="auto">
           <ReactMarkdown
@@ -60,16 +61,18 @@ export const Message: React.FC<MessageProps> = React.memo(({
                   if (!href) return;
                   if (href.startsWith("/documents/")) {
                     e.preventDefault();
-                    const full = `${API_BASE}${href}`;
-                    window.open(full, "_blank", "noopener,noreferrer");
+                    window.open(`${API_BASE}${href}`, "_blank", "noopener,noreferrer");
+                  } else if (href.startsWith("/explorer")) {
+                    e.preventDefault();
+                    navigate(href);
                   }
                 };
-                const isDoc = href?.startsWith("/documents/");
+                const isExternal = !href?.startsWith("/documents/") && !href?.startsWith("/explorer");
                 return (
                   <a
-                    href={isDoc ? "#" : href}
+                    href={href}
                     onClick={handleClick}
-                    target={isDoc ? undefined : "_blank"}
+                    target={isExternal ? "_blank" : undefined}
                     rel="noopener noreferrer"
                     className="text-purple-400 underline underline-offset-2 hover:text-purple-300 transition-colors cursor-pointer"
                   >
@@ -94,6 +97,8 @@ export const Message: React.FC<MessageProps> = React.memo(({
             {text}
           </ReactMarkdown>
         </div>
+
+        {children}
 
         {meta ? (
           <div

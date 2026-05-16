@@ -1,5 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
 import App from "./App.tsx";
 import { RecoilRoot } from "recoil";
 import "./index.css";
@@ -11,10 +12,12 @@ const apiClient = new ChainlitAPI(CHAINLIT_SERVER, "webapp");
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ChainlitContext.Provider value={apiClient}>
-      <RecoilRoot>
-        <App />
-      </RecoilRoot>
-    </ChainlitContext.Provider>
+    <BrowserRouter>
+      <ChainlitContext.Provider value={apiClient}>
+        <RecoilRoot>
+          <App />
+        </RecoilRoot>
+      </ChainlitContext.Provider>
+    </BrowserRouter>
   </React.StrictMode>
 );

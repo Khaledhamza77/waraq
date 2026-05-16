@@ -54,8 +54,9 @@ def _format_response(answer: str, citations: list[dict]) -> str:
             pages = cit.get("pages", {})
             start, end = pages.get("start", "?"), pages.get("end", "?")
             title = cit.get("title", "")
+            node_id = cit.get("node_id", "")
             page_ref = f"صفحة {start}" if start == end else f"صفحات {start}–{end}"
-            parts.append(f"- {title} ({page_ref})")
+            parts.append(f"- [{title} ({page_ref})](/explorer?section={node_id}&page={start})")
     return "\n".join(parts)
 
 
