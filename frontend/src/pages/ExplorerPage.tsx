@@ -96,9 +96,10 @@ const PageView = React.memo(function PageView({
         position: "relative",
         width: "100%",
         maxWidth: 820,
-        // A4 aspect ratio keeps the page container the right height while the
-        // image is lazily loading, so scrollIntoView lands on the correct page.
-        aspectRatio: "210 / 297",
+        // US Letter (612×792 pt) — the actual PDF page size.
+        // Keeps the container the right height while images are lazy-loading
+        // so scrollIntoView lands on the correct page.
+        aspectRatio: "612 / 792",
         margin: "0 auto 32px",
         boxShadow: "0 2px 20px rgba(0,0,0,0.6)",
         background: "#fff",
