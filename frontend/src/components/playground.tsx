@@ -9,16 +9,11 @@ import {
 } from "@chainlit/react-client";
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { BookOpen, MessageCircle, ArrowLeft, FileSearch } from "lucide-react";
+import { BookOpen, MessageCircle, ArrowLeft, FileSearch, RotateCcw } from "lucide-react";
 import { UserMessage } from "./ui/UserMessage";
 import { AIMessage } from "./ui/AIMessage";
 import { TopBar } from "./ui/TopBar";
-import { FileUploader } from "./ui/FileUploader";
-import { AttachedFiles } from "./ui/AttachedFiles";
-import type { AttachedFile } from "@/types/attachedFile";
 
-const MAX_MB = 20;
-const ACCEPT = [".pdf"];
 const EMPTY_ELEMENTS: any[] = [];
 const font = "'Almarai', sans-serif";
 
@@ -29,16 +24,6 @@ const sampleQuestions = [
   "كيف تُصنَّف الأدوات المالية وتُقاس؟",
 ];
 
-const validate = (f: File) => {
-  const ext = f.name.split(".").pop()?.toLowerCase();
-  if (!ext || !ACCEPT.includes("." + ext)) {
-    return `Only ${ACCEPT.join(", ")} files are allowed.`;
-  }
-  if (f.size > MAX_MB * 1024 * 1024) {
-    return `File too big. Max ${MAX_MB} MB allowed.`;
-  }
-  return null;
-};
 
 function flattenMessages(
   messages: IStep[],
@@ -77,10 +62,7 @@ export function Playground() {
     }, 350);
   };
   const [inputValue, setInputValue] = useState("");
-  const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([]);
-  const fileSnapshotsRef = useRef<AttachedFile[][]>([]);
-  const [uploading, setUploading] = useState(false);
-  const { sendMessage, uploadFile } = useChatInteract();
+  const { sendMessage, clear } = useChatInteract();
   const { messages } = useChatMessages();
   const { loading, disabled, elements } = useChatData();
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -119,32 +101,17 @@ export function Playground() {
         type: "user_message" as const,
         output: content,
       };
-      fileSnapshotsRef.current.push([...attachedFiles]);
-      sendMessage(message, attachedFiles.map((f) => ({ id: f.id })));
-      setAttachedFiles([]);
+      sendMessage(message, []);
       setInputValue("");
       setAutoScroll(true);
       setTimeout(() => inputRef.current?.focus(), 0);
     }
   };
 
-  const handleFileSelect = async (selectedFile: File) => {
-    const err = validate(selectedFile);
-    if (err) { alert(err); return; }
-    setUploading(true);
-    try {
-      const { promise } = uploadFile(selectedFile, (p) => console.log("progress:", p));
-      const { id } = await promise;
-      setAttachedFiles((prev) => [...prev, { id, name: selectedFile.name }]);
-    } catch {
-      alert("Upload failed. Please try again.");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const removeAttachedFile = (id: string) => {
-    setAttachedFiles((prev) => prev.filter((f) => f.id !== id));
+  const handleClearChat = () => {
+    clear();
+    sessionStorage.removeItem("chatMode");
+    setMode("pick");
   };
 
   const lastMessageOutput = useMemo(
@@ -175,9 +142,8 @@ export function Playground() {
     const stepElements = elementsByStepId.get(message.id) ?? EMPTY_ELEMENTS;
 
     if (author === "user") {
-      const files = fileSnapshotsRef.current[userMessageIndex];
       userMessageIndex++;
-      return <UserMessage key={message.id} text={text} files={files} className="mt-4" />;
+      return <UserMessage key={message.id} text={text} className="mt-4" />;
     }
 
     return (
@@ -346,13 +312,38 @@ export function Playground() {
             }}
           >
             <div style={{ maxWidth: "75%", margin: "0 auto", padding: "0 5px", display: "flex", flexDirection: "column", gap: 6 }}>
-              {attachedFiles.length > 0 && (
-                <AttachedFiles files={attachedFiles} onRemove={removeAttachedFile} />
-              )}
               <div
                 ref={inputBarRef}
                 className="w-full flex items-center gap-2 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 px-4 py-3 text-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition"
               >
+                <button
+                  onClick={handleClearChat}
+                  title="مسح المحادثة"
+                  style={{
+                    flexShrink: 0,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    color: "rgba(255,255,255,0.35)",
+                    cursor: "pointer",
+                    transition: "background 0.2s, color 0.2s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.12)";
+                    e.currentTarget.style.color = "rgba(255,255,255,0.7)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.06)";
+                    e.currentTarget.style.color = "rgba(255,255,255,0.35)";
+                  }}
+                >
+                  <RotateCcw size={15} strokeWidth={2} />
+                </button>
                 <Input
                   ref={inputRef}
                   autoFocus
@@ -362,11 +353,6 @@ export function Playground() {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyUp={(e) => { if (e.key === "Enter") handleSendMessage(); }}
-                />
-                <FileUploader
-                  accept={ACCEPT}
-                  uploading={uploading}
-                  onFileSelect={handleFileSelect}
                 />
                 <SendButton
                   onClick={handleSendMessage}
