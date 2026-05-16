@@ -158,3 +158,50 @@ def greeting_system() -> str:
 
 def greeting_prompt(query: str) -> str:
     return query
+
+
+# ── Stage 4b: Section hook rebuild prompts ───────────────────────────────────
+# Used by scripts/rebuild_section_hooks.py.
+# Validated on sections 3–9 of the Egyptian Accounting Standards PDF (208 pages).
+# When onboarding a new document: ensure all non-leaf section nodes in the
+# target range have contents_page (single page int/str) and introduction_pages
+# (list of int/str, may be empty) before running the script.
+#
+# TOC items are now parsed directly from the page (see parse_toc_from_page in
+# rebuild_section_hooks.py) and injected verbatim — the LLM only summarises the
+# introduction and child hooks to avoid hallucinating table-of-contents entries.
+
+def rebuild_intro_children_system() -> str:
+    return (
+        "أنت مساعد تحريري متخصص في وثائق المعايير المحاسبية. "
+        "ستُقدَّم إليك المصادر المتاحة عن قسم من الوثيقة. "
+        "مهمتك توليد ملخص موجز لكل مصدر مقدَّم — جملتان على الأكثر لكل جزء. "
+        "ابدأ مباشرةً بالمحتوى. "
+        "لا تكتب مقدمة ولا خاتمة ولا أي تعليق خارج الملخصات المطلوبة."
+    )
+
+
+def rebuild_intro_children_prompt(
+    title: str,
+    intro_content: str | None,
+    child_hooks: list[str],
+) -> str:
+    parts = [f"القسم: {title}"]
+    if intro_content:
+        parts.append(f"نص المقدمة:\n{intro_content}")
+    if child_hooks:
+        hooks_text = "\n".join(f"- {h}" for h in child_hooks)
+        parts.append(f"ملخصات الأقسام الفرعية:\n{hooks_text}")
+
+    # Build instructions only for the sources that are actually present
+    instructions: list[str] = []
+    if intro_content:
+        instructions.append("ملخص موجز لنص المقدمة في جملتين على الأكثر")
+    if child_hooks:
+        instructions.append("ملخص موجز لما تغطيه الأقسام الفرعية مجتمعةً في جملتين على الأكثر")
+
+    numbered = "\n".join(
+        f"{'١' if i == 0 else '٢'}. {inst}" for i, inst in enumerate(instructions)
+    )
+    parts.append(f"اكتب:\n{numbered}\nلا تضف شيئاً آخر.")
+    return "\n\n".join(parts)

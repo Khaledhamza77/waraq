@@ -1,0 +1,72 @@
+# Waraq observability stack — Langfuse + its Postgres backend.
+# Run: docker compose up -d
+# See docs/langfuse_setup.md for API key setup.
+
+networks:
+  observability:
+
+volumes:
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/postgres
+  langfuse_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data/langfuse
+
+services:
+  # ── Postgres (Langfuse backend) ────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: waraq-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-langfuse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-langfuse}
+      POSTGRES_DB: ${POSTGRES_DB:-langfuse}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 1G
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-langfuse}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - observability
+    restart: unless-stopped
+
+  # ── Langfuse Observability ─────────────────────────────────────
+  langfuse:
+    image: langfuse/langfuse:2
+    container_name: waraq-langfuse
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-langfuse}:${POSTGRES_PASSWORD:-langfuse}@postgres:5432/${POSTGRES_DB:-langfuse}
+      NEXTAUTH_URL: http://localhost:3000
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-change-me-langfuse-secret}
+      SALT: ${LANGFUSE_SALT:-change-me-langfuse-salt}
+      TELEMETRY_ENABLED: "false"
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 2G
+    networks:
+      - observability
+    restart: unless-stopped

@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel
 
+from waraq.observability.tracer import safe_generation
+
 load_dotenv()
 
 log = logging.getLogger(__name__)
@@ -21,10 +23,27 @@ _THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
 def _clean_llm_output(raw: str) -> str:
     # Strip complete <think>...</think> blocks
     s = _THINK_RE.sub("", raw)
-    # Strip anything before a stray </think> (opening tag was missing)
+    # Strip everything up to and including a stray </think> (opening tag was eaten by the regex)
     if "</think>" in s:
         s = s.split("</think>", 1)[-1]
+    # Strip from a stray <think> to end-of-string (model stopped mid-thought, no closing tag)
+    if "<think>" in s:
+        s = s.split("<think>", 1)[0]
     return s.strip()
+
+
+def _extract_json(text: str) -> str:
+    """Return the first complete JSON object slice from *text*.
+
+    Finds the first '{' and the last '}' and returns the substring between them
+    (inclusive). Falls back to the original string if no braces are found, so
+    json.loads can produce its own descriptive error.
+    """
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        return text
+    return text[start : end + 1]
 
 
 def _clean_schema(schema: dict[str, Any]) -> dict[str, Any]:
@@ -70,20 +89,32 @@ class SILMAClient:
         system: str = "",
         temperature: float = 0.1,
         max_tokens: int = 2048,
+        think: bool = False,
     ) -> str:
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
+        extra: dict[str, Any] = {"num_ctx": 32768, "think": think}
+
         response = self._client.chat.completions.create(
             model=self._model,
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
-            extra_body={"num_ctx": 32768},
+            extra_body=extra,
         )
         raw = response.choices[0].message.content or ""
+        usage = response.usage
+        safe_generation(
+            name="complete",
+            model=self._model,
+            messages=messages,
+            completion=raw,
+            prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+            completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        )
         return _clean_llm_output(raw)
 
     def structured(
@@ -123,14 +154,21 @@ class SILMAClient:
                 messages=messages,
                 temperature=temperature,
                 response_format=response_format,
-                extra_body={"num_ctx": 32768},
+                # think=False suppresses qwen3 <think> blocks for structured calls;
+                # format precision matters here, not deliberation.
+                extra_body={"num_ctx": 32768, "think": False},
             )
             raw = response.choices[0].message.content or "{}"
-            content = _clean_llm_output(raw)
-            # Strip any garbage bytes before the opening brace
-            brace = content.find("{")
-            if brace > 0:
-                content = content[brace:]
+            usage = response.usage
+            safe_generation(
+                name="structured",
+                model=self._model,
+                messages=messages,
+                completion=raw,
+                prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+                completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+            )
+            content = _extract_json(_clean_llm_output(raw))
             try:
                 return json.loads(content)
             except json.JSONDecodeError as exc:
