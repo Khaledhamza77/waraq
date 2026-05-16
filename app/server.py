@@ -16,6 +16,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from starlette.middleware.cors import CORSMiddleware
 
+from app.explorer_router import router as explorer_router
+
 _ROOT = Path(__file__).parent.parent  # repo root
 _DOCUMENTS_DIR = _ROOT / "data" / "raw_documents"
 
@@ -61,6 +63,8 @@ async def download_document(filename: str):
         media_type="application/octet-stream",
     )
 
+
+app.include_router(explorer_router)
 
 # Mount Chainlit at /chainlit — React client connects here via WebSocket
 mount_chainlit(app=app, target="app/chainlit_app.py", path="/chainlit")

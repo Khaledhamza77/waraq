@@ -14,13 +14,39 @@ export const AppShell: React.FC<AppShellProps> = ({
 }) => {
   return (
     <div
-      className={`min-h-screen w-full  text-gray-100 bg-[#0a0f1f] relative overflow-hidden ${outerClassName ?? ""}`}
+      style={{ backgroundColor: "#000000", overflowX: "clip" }}
+      className={`w-full text-gray-100 relative ${outerClassName ?? ""}`}
     >
-      {/* Blue glow — bottom-left */}
-      <div className="pointer-events-none absolute left-0 bottom-0 w-[70vw] h-[70vh] bg-[radial-gradient(circle_at_bottom_left,#30488F,transparent_40%)]" />
-
-      {/* Purple glow — top-right */}
-      <div className="pointer-events-none absolute right-0 top-0 w-[70vw] h-[70vh] bg-[radial-gradient(circle_at_top_right,#4C207B,transparent_40%)]" />
+      {/* Aurora halo */}
+      <div
+        aria-hidden
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          className="aurora"
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            width: "140vw",
+            height: "140vw",
+            marginTop: "-70vw",
+            marginLeft: "-70vw",
+            background: `
+              radial-gradient(ellipse 55% 40% at 60% 35%, rgba(124,58,237,0.55) 0%, transparent 70%),
+              radial-gradient(ellipse 45% 50% at 75% 65%, rgba(6,182,212,0.38) 0%, transparent 65%),
+              radial-gradient(ellipse 50% 45% at 30% 70%, rgba(37,99,235,0.45) 0%, transparent 70%)
+            `,
+            filter: "blur(55px)",
+          }}
+        />
+      </div>
 
       <div className={`relative z-10 mx-auto px-6 md:px-10 ${className ?? ""}`}>
         {children}

@@ -523,6 +523,91 @@ pytest tests/test_chainlit_app.py -v --log-cli-level=DEBUG  # all tests
 
 ---
 
+## Stage 10 — Document Explorer 🚧
+
+**Status:** Code complete + code-reviewed — pending run of build script and browser smoke-test
+**Files:** `scripts/build_section_chunks.py` (new), `app/explorer_router.py` (new), `app/server.py` (updated), `pyproject.toml` (updated), `frontend/src/pages/ExplorerPage.tsx` (complete rewrite)
+
+---
+
+### What was built
+
+#### `scripts/build_section_chunks.py`
+One-shot pre-processing script.  `data/bbox_map.json` is the source of truth: only sections with non-null `start_box`/`end_box` get entries (144 sections out of 156 index leaves).  For each such section, the page range is `start_box.page`→`end_box.page`; every chunk from `data/parsed/output.json` whose `grounding.page` falls in that range is collected.  `data/index.json` enriches each entry with `title` and `hook` for sidebar display.
+
+Output schema: `data/section_chunks.json` — `{ section_id: { title, hook, start_page, end_page, chunks: [{chunk_id, page, box, markdown, type}] } }`
+
+Run once (idempotent — overwrites):
+```bash
+python scripts/build_section_chunks.py
+```
+
+#### `app/explorer_router.py`
+FastAPI `APIRouter` (prefix `/explorer`, tags `["explorer"]`) with three endpoints:
+
+| Endpoint | Behaviour |
+|----------|-----------|
+| `GET /explorer/index` | Returns `data/index.json` section tree |
+| `GET /explorer/page/{page_num}` | Renders PDF page as PNG via PyMuPDF at 1.5× zoom (≈108 DPI); results cached in `_page_cache` dict |
+| `GET /explorer/section/{section_id}/chunks` | Returns the full entry from `section_chunks.json` |
+
+PDF, index, and section_chunks are loaded lazily as module-level singletons on first request.  PyMuPDF import is guarded: `import pymupdf as fitz` falls back to `import fitz` for older package versions.  All three `FileNotFoundError` cases (missing PDF, missing index, missing section_chunks.json) are caught and re-raised as `HTTPException(503)` with actionable messages.
+
+#### `app/server.py` — change
+Added `from app.explorer_router import router as explorer_router` and `app.include_router(explorer_router)` before the Chainlit mount.
+
+#### `pyproject.toml` — change
+Added `fastapi>=0.100.0` and `uvicorn[standard]>=0.23.0` as explicit top-level dependencies (they were previously only transitive via chainlit). `pymupdf>=1.24.0` was already present. After this change, `uv sync` installs all backend requirements including the PDF renderer.
+
+#### `frontend/src/pages/ExplorerPage.tsx` — complete rewrite
+Full document explorer replacing the "coming soon" placeholder.
+
+**Layout:** 3-zone dark-theme layout — fixed 52px header, flex body (document viewer left + 290px TOC sidebar right), `position:fixed` content panel (bottom drawer).
+
+**Document Viewer:** Renders all 208 pages stacked vertically using `<img loading="lazy" decoding="async">`. Each page container has `aspectRatio: "210 / 297"` (A4) so it holds correct height before the image loads — this makes `scrollIntoView` land on the right page. When a section is selected, bbox overlays are absolutely-positioned `<div>` elements using normalised 0–1 coordinates from `chunk.box`. Boxes are semi-transparent with a coloured border; hover brightens; the active (clicked) box gets a stronger fill. `React.memo` on `PageView` plus a stable `EMPTY_CHUNKS` constant prevent re-renders for pages that have no chunks.
+
+**TOC Sidebar (290px, RTL-native):** Recursive `TocNode` tree with expand/collapse. Right-side border indicator on selected node; right padding grows with depth (correct RTL-start-side indentation). Sections are colour-coded by top-level parent (`section_1`→slate, `section_2`→cyan, `section_3`→violet, `section_4`→blue, `section_5`→purple, `section_6`→emerald, `section_7`→amber, `section_8`→red, `section_9`→green). Sections without bbox data are dimmed. Re-clicking the selected section deselects it. "إلغاء التحديد" button at bottom when something is selected.
+
+**Content Panel:** `position:fixed` drawer (42vh) slides up with `slideUp` CSS animation when a bbox is clicked. Header shows chunk type badge + page number; body is `ReactMarkdown`-rendered Arabic content with `dir="rtl"`. Closes on ✕ button or selecting a new section.
+
+**State flow:**
+1. Mount → `GET /explorer/index` → populate TOC
+2. TOC click → `GET /explorer/section/{id}/chunks` → build `page→Chunk[]` map → set bbox overlays → `scrollIntoView` first chunk page (80ms delay to let React flush)
+3. Bbox click → set `activeChunk` → open content panel
+4. Re-click selected section / "إلغاء التحديد" / ✕ → clear state
+
+---
+
+### Code review — bugs found and fixed
+
+Six issues were caught and fixed after initial implementation:
+
+| # | Severity | Location | Bug | Fix |
+|---|----------|----------|-----|-----|
+| 1 | Critical | `pyproject.toml` | `fastapi` and `uvicorn` missing as explicit deps; only transitive via chainlit | Added both with version bounds |
+| 2 | Critical | `ExplorerPage.tsx` | `scrollIntoView` always jumped to page 1 — pages had `height: 0` before lazy images loaded, so all 208 page divs were stacked at the top | Added `aspectRatio: "210 / 297"` to page container |
+| 3 | Bug | `ExplorerPage.tsx` | RTL indentation broken — left padding increased with depth but text is right-aligned, so no visual hierarchy appeared | Swapped to right padding: `padding: 5px ${14+depth*14}px 5px 12px` |
+| 4 | Bug | `explorer_router.py` | `FileNotFoundError` (missing PDF / `section_chunks.json`) propagated as unhandled 500 | Wrapped `_get_pdf()` and `_get_section_chunks()` calls in `try/except FileNotFoundError` → `HTTPException(503)` with action message |
+| 5 | Minor | `ExplorerPage.tsx` | `viewerRef` declared and attached but never read — dead code | Removed ref and unused `useRef` import |
+| 6 | Minor | `ExplorerPage.tsx` | `pageChunks.get(pageNum) ?? []` created a new array reference every render, defeating `React.memo` on `PageView` for all pages with no chunks | Introduced module-level `EMPTY_CHUNKS: Chunk[] = []` stable constant |
+
+---
+
+### Definition of done — Stage 10
+
+- [x] `scripts/build_section_chunks.py` written and reviewed
+- [x] `app/explorer_router.py` written and reviewed (3 endpoints, `FileNotFoundError` handled)
+- [x] `app/server.py` updated — explorer router included
+- [x] `pyproject.toml` updated — `fastapi` and `uvicorn` declared explicitly
+- [x] `frontend/src/pages/ExplorerPage.tsx` complete rewrite, all review bugs fixed
+- [ ] `uv sync` — installs all deps including PyMuPDF, FastAPI, uvicorn
+- [ ] `python scripts/build_section_chunks.py` — generates `data/section_chunks.json`
+- [ ] Backend: `uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload`
+- [ ] Frontend: `cd frontend && npm run dev`
+- [ ] Smoke test: `/explorer` loads → TOC renders → click a section → bboxes appear on correct page → click a bbox → content panel shows Arabic markdown → deselect clears all highlights
+
+---
+
 ## Stage 8 — Per-LLM-call Langfuse Generation Tracing ✅
 
 **Status:** Complete (code implemented; requires Langfuse stack running — see `docs/langfuse_setup.md`)
