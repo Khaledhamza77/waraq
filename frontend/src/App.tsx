@@ -9,28 +9,21 @@ import ExplorerPage from "./pages/ExplorerPage";
 
 const userEnv = {};
 
-function AppShell() {
+function App() {
   const { connect } = useChatSession();
   const session = useRecoilValue(sessionState);
+
   useEffect(() => {
-    if (session?.socket.connected) {
-      return;
-    }
+    if (session?.socket.connected) return;
     fetch("http://localhost:8000/custom-auth", { credentials: "include" }).then(
-      () => {
-        connect({ userEnv });
-      }
+      () => connect({ userEnv })
     );
   }, [connect]);
 
-  return <Playground />;
-}
-
-function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
-      <Route path="/app" element={<AppShell />} />
+      <Route path="/app" element={<Playground />} />
       <Route path="/explorer" element={<ExplorerPage />} />
     </Routes>
   );

@@ -59,10 +59,13 @@ function flattenMessages(
 
 export function Playground() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"pick" | "chat">("pick");
+  const [mode, setMode] = useState<"pick" | "chat">(
+    () => (sessionStorage.getItem("chatMode") as "pick" | "chat") || "pick"
+  );
   const [isLeaving, setIsLeaving] = useState(false);
 
   const switchToChat = () => {
+    sessionStorage.setItem("chatMode", "chat");
     setIsLeaving(true);
     setTimeout(() => {
       setMode("chat");
@@ -78,6 +81,7 @@ export function Playground() {
   const { loading, disabled, elements } = useChatData();
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const inputBarRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const [autoScroll, setAutoScroll] = useState(true);
   const autoScrollRef = useRef(autoScroll);
   autoScrollRef.current = autoScroll;
@@ -116,6 +120,7 @@ export function Playground() {
       setAttachedFiles([]);
       setInputValue("");
       setAutoScroll(true);
+      setTimeout(() => inputRef.current?.focus(), 0);
     }
   };
 
@@ -275,7 +280,7 @@ export function Playground() {
         {/* ── Chat mode: messages ── */}
         {mode === "chat" && (
           <div className="fade-in w-full h-full overflow-y-auto px-6 pt-6 pb-40">
-            <div className="space-y-4">
+            <div className="space-y-4" dir="ltr">
               {flatMessages.map((message, index) =>
                 renderMessage(message, index === flatMessages.length - 1),
               )}
@@ -295,6 +300,7 @@ export function Playground() {
             ) : undefined
           }>
             <Input
+              ref={inputRef}
               autoFocus
               className="flex-1"
               id="message-input"
