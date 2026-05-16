@@ -223,3 +223,4 @@ data/postgres
 frontend/node_modules
 frontend/dist
 .chainlit
+langfuse/
