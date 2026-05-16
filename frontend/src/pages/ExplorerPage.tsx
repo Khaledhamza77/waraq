@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import rehypeRaw from "rehype-raw";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -415,7 +416,7 @@ function ContentPanel({ chunk, color, onClose }: ContentPanelProps) {
         }}
         className="prose prose-invert prose-sm max-w-none"
       >
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeRaw]}>
           {chunk.markdown}
         </ReactMarkdown>
       </div>
