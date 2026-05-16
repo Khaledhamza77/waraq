@@ -167,9 +167,14 @@ async def explorer_section_chunks(section_id: str) -> Any:
     def _is_visible(chunk: dict) -> bool:
         if chunk.get("page") in excluded:
             return False
-        # Drop gazette running-header that repeats on every page
+        # Drop gazette running-header that repeats on every page.
+        # Typical header height is 0.03–0.04; anything above 0.06 means the
+        # parser merged real content into the same bbox — keep those.
         if "الوقائع المصرية" in chunk.get("markdown", ""):
-            return False
+            box = chunk.get("box", {})
+            h = box.get("bottom", 0) - box.get("top", 0)
+            if h <= 0.06:
+                return False
         return True
 
     filtered_chunks = [c for c in section_data.get("chunks", []) if _is_visible(c)]
