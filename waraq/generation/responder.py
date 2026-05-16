@@ -1,8 +1,6 @@
 import logging
 from typing import Any
 
-from pydantic import BaseModel
-
 from waraq.llm.client import get_client
 from waraq.navigation.prompts import (
     answer_prompt,
@@ -19,12 +17,7 @@ NOT_FOUND_ANSWER = (
 )
 
 
-class _AnswerResponse(BaseModel):
-    answer: str
-
-
 def _build_citations(leaf_metadata: list[dict]) -> list[dict[str, Any]]:
-    """Build one citation entry per leaf returned by navigation."""
     return [
         {
             "node_id": m["id"],
@@ -41,16 +34,15 @@ def generate_answer(
     leaf_metadata: list[dict],
 ) -> dict[str, Any]:
     """Return {"answer": str, "citations": [{"node_id", "title", "pages": {"start", "end"}}, ...]}."""
-    result = get_client().structured(
+    answer = get_client().complete(
         prompt=answer_prompt(query, leaf_metadata, leaf_content),
         system=answer_system(),
-        schema=_AnswerResponse,
     )
-    if not result:
-        log.error("generate_answer: structured() returned empty dict")
+    if not answer:
+        log.error("generate_answer: complete() returned empty string")
         return {}
     return {
-        "answer": result.get("answer", ""),
+        "answer": answer,
         "citations": _build_citations(leaf_metadata),
     }
 
