@@ -1,15 +1,49 @@
 import json
+import logging
 import os
+import re
 from typing import Any
 
 from dotenv import load_dotenv
 from openai import OpenAI
 from pydantic import BaseModel
 
+from waraq.observability.tracer import safe_generation
+
 load_dotenv()
+
+log = logging.getLogger(__name__)
 
 _BASE_URL = os.getenv("LLM_BASE_URL", "http://localhost:11434/v1")
 _MODEL = os.getenv("LLM_MODEL", "silma-v1")
+
+_THINK_RE = re.compile(r"<think>.*?</think>", re.DOTALL)
+
+
+def _clean_llm_output(raw: str) -> str:
+    # Strip complete <think>...</think> blocks
+    s = _THINK_RE.sub("", raw)
+    # Strip everything up to and including a stray </think> (opening tag was eaten by the regex)
+    if "</think>" in s:
+        s = s.split("</think>", 1)[-1]
+    # Strip from a stray <think> to end-of-string (model stopped mid-thought, no closing tag)
+    if "<think>" in s:
+        s = s.split("<think>", 1)[0]
+    return s.strip()
+
+
+def _extract_json(text: str) -> str:
+    """Return the first complete JSON object slice from *text*.
+
+    Finds the first '{' and the last '}' and returns the substring between them
+    (inclusive). Falls back to the original string if no braces are found, so
+    json.loads can produce its own descriptive error.
+    """
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        return text
+    return text[start : end + 1]
 
 
 def _clean_schema(schema: dict[str, Any]) -> dict[str, Any]:
@@ -18,6 +52,7 @@ def _clean_schema(schema: dict[str, Any]) -> dict[str, Any]:
     Ollama resolves $defs inline and rejects unknown top-level keys like 'title'.
     We inline any $defs and drop decorative-only keys before sending.
     """
+    schema = dict(schema)
     defs = schema.pop("$defs", {})
 
     def inline(node: Any) -> Any:
@@ -25,14 +60,21 @@ def _clean_schema(schema: dict[str, Any]) -> dict[str, Any]:
             if "$ref" in node:
                 ref_name = node["$ref"].split("/")[-1]
                 return inline(defs.get(ref_name, node))
-            return {k: inline(v) for k, v in node.items() if k != "title"}
+            result = {}
+            for k, v in node.items():
+                if k == "title":
+                    continue  # strip schema-level title metadata
+                if k == "properties":
+                    # preserve property names — they are field names, not metadata
+                    result[k] = {pk: inline(pv) for pk, pv in v.items()}
+                else:
+                    result[k] = inline(v)
+            return result
         if isinstance(node, list):
             return [inline(i) for i in node]
         return node
 
-    cleaned = inline(schema)
-    cleaned.pop("title", None)
-    return cleaned
+    return inline(schema)
 
 
 class SILMAClient:
@@ -46,18 +88,34 @@ class SILMAClient:
         prompt: str,
         system: str = "",
         temperature: float = 0.1,
+        max_tokens: int = 2048,
+        think: bool = False,
     ) -> str:
         messages = []
         if system:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
+        extra: dict[str, Any] = {"num_ctx": 32768, "think": think}
+
         response = self._client.chat.completions.create(
             model=self._model,
             messages=messages,
             temperature=temperature,
+            max_tokens=max_tokens,
+            extra_body=extra,
         )
-        return response.choices[0].message.content or ""
+        raw = response.choices[0].message.content or ""
+        usage = response.usage
+        safe_generation(
+            name="complete",
+            model=self._model,
+            messages=messages,
+            completion=raw,
+            prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+            completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+        )
+        return _clean_llm_output(raw)
 
     def structured(
         self,
@@ -79,25 +137,47 @@ class SILMAClient:
         if schema is None:
             response_format: dict[str, Any] = {"type": "json_object"}
         else:
-            raw = (
+            raw_schema = (
                 schema.model_json_schema() if not isinstance(schema, dict) else dict(schema)
             )
             response_format = {
                 "type": "json_schema",
                 "json_schema": {
                     "name": "result",
-                    "schema": _clean_schema(raw),
+                    "schema": _clean_schema(raw_schema),
                 },
             }
 
-        response = self._client.chat.completions.create(
-            model=self._model,
-            messages=messages,
-            temperature=temperature,
-            response_format=response_format,
-        )
-        content = response.choices[0].message.content or "{}"
-        return json.loads(content)
+        for attempt in range(2):
+            response = self._client.chat.completions.create(
+                model=self._model,
+                messages=messages,
+                temperature=temperature,
+                response_format=response_format,
+                # think=False suppresses qwen3 <think> blocks for structured calls;
+                # format precision matters here, not deliberation.
+                extra_body={"num_ctx": 32768, "think": False},
+            )
+            raw = response.choices[0].message.content or "{}"
+            usage = response.usage
+            safe_generation(
+                name="structured",
+                model=self._model,
+                messages=messages,
+                completion=raw,
+                prompt_tokens=getattr(usage, "prompt_tokens", 0) or 0,
+                completion_tokens=getattr(usage, "completion_tokens", 0) or 0,
+            )
+            content = _extract_json(_clean_llm_output(raw))
+            try:
+                return json.loads(content)
+            except json.JSONDecodeError as exc:
+                log.warning(
+                    "structured(): JSON decode error on attempt %d/2: %s | raw: %.200s",
+                    attempt + 1, exc, raw,
+                )
+        log.error("structured(): failed to decode JSON after 2 attempts, returning {}")
+        return {}
 
 
 _default_client: SILMAClient | None = None

@@ -1,0 +1,28 @@
+[project]
+user_env = []
+session_timeout = 3600
+cache = false
+allow_origins = ["*"]
+enable_telemetry = false
+
+[features]
+unsafe_allow_html = false
+latex = false
+user_message_markdown = true
+
+[features.spontaneous_file_upload]
+enabled = true
+accept = ["application/pdf"]
+max_files = 5
+max_size_mb = 20
+
+[UI]
+name = "Waraq"
+cot = "hidden"
+confirm_new_chat = true
+
+[meta]
+generated_by = "2.11.1"
+
+[server]
+cors_allow_origins = ["http://localhost:5173", "http://localhost:4173"]

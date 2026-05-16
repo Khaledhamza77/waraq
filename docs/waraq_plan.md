@@ -7,7 +7,7 @@
 
 **waraq** is an agentic Arabic document navigation system built for Egyptian accounting regulation. It uses hierarchical index traversal powered by SILMA-9B to navigate a structured regulatory document and return precise, cited answers without embeddings or vector search.
 
-**Stack:** Python · FastAPI · LangGraph · Ollama · SILMA-9B · LandingAI ADE · Langfuse · uv
+**Stack:** Python · Chainlit · LangGraph · Ollama · SILMA-9B · LandingAI ADE · Langfuse · uv
 
 ---
 
@@ -15,10 +15,15 @@
 
 ```
 waraq/
+├── app/                        # Stage 7: application layer (server + Chainlit)
+│   ├── __init__.py
+│   ├── server.py               # FastAPI entry point (uvicorn app.server:app)
+│   └── chainlit_app.py         # Chainlit handlers (@on_chat_start, @on_message)
 ├── data/
 │   ├── raw/                    # original PDF
 │   ├── parsed/                 # Landing AI raw JSON output
 │   └── index.json              # master document index (hand-mapped + enriched)
+├── frontend/                   # React + Chainlit client (existing, unchanged)
 ├── waraq/
 │   ├── ingestion/
 │   │   └── parser.py           # Stage 1: Landing AI ingestion pipeline
@@ -32,11 +37,9 @@ waraq/
 │   │   └── responder.py        # Stage 6: final answer generation
 │   ├── llm/
 │   │   └── client.py           # shared Ollama client, structured output helpers
-│   ├── observability/
-│   │   └── tracer.py           # Stage 8: Langfuse integration
-│   └── api/
-│       ├── main.py             # Stage 7: FastAPI app
-│       └── schemas.py          # request/response models
+│   └── observability/
+│       └── tracer.py           # Stage 8: Langfuse integration
+├── .chainlit/                  # Chainlit config (auto-generated)
 ├── scripts/
 │   ├── run_ingestion.py        # one-shot: parse PDF → save JSON
 │   ├── run_summary_gen.py      # one-shot: enrich index.json with summaries
@@ -356,48 +359,90 @@ Response format (structured):
 
 ---
 
-## Stage 7 — FastAPI + Frontend Integration
+## Stage 7 — Chainlit + Frontend Integration
 
-**Goal:** A running FastAPI backend that the frontend can query and receive answers from.
+**Goal:** A running Chainlit backend that the frontend connects to and receives streamed Arabic answers from.
 
-**Definition of done:** Frontend sends a query and receives a structured response. End-to-end flow works in a browser.
+**Definition of done:** Frontend sends a query over WebSocket and receives a streamed Arabic answer with citations rendered as markdown. End-to-end flow works in a browser with live status updates visible during navigation.
 
-**Step 1 — Assess frontend:**
-Inspect the existing frontend code. Document exactly: what endpoint it calls, what request schema it sends, what response schema it expects. Define the API contract from this.
+**Background — what the frontend actually does:**
+The frontend (`frontend/`) uses `@chainlit/react-client` — it speaks Chainlit's socket.io protocol, not plain HTTP. There is no REST API to build. Everything goes through two Chainlit-managed connections:
 
-**Step 2 — Build API:**
+- `GET  http://localhost:8000/custom-auth` — auth ping called once on load; any 2xx suffices
+- `WS   http://localhost:8000/chainlit`    — socket.io connection for all messages and file uploads
 
-Single endpoint:
+See `docs/frontend_overview.md` for the full frontend contract.
+
+**Step 1 — Chainlit app entry point (`chainlit_app.py`):**
+
+```python
+@cl.on_chat_start
+async def on_start():
+    # Load index + build graph once per session, store in user session
+    cl.user_session.set("graph", build_graph())
+    cl.user_session.set("config", {...})
+
+@cl.on_message
+async def on_message(message: cl.Message):
+    # 1. Create a response message immediately (shows spinner)
+    msg = cl.Message(content="")
+    await msg.send()
+
+    graph = cl.user_session.get("graph")
+    config = cl.user_session.get("config")
+
+    # 2. Stream status updates while navigating
+    msg.content = "جاري البحث في معايير المحاسبة المصرية..."
+    await msg.update()
+
+    # 3. Run navigation graph
+    initial = build_initial_state(message.content)
+    nav = graph.invoke(initial, config=config)
+
+    # 4. Generate response based on status
+    if nav["status"] == "found":
+        msg.content = "جاري تحليل النص وإعداد الإجابة..."
+        await msg.update()
+        result = generate_answer(...)
+        msg.content = format_response(result)   # answer + citations as markdown
+    elif nav["status"] == "greeting":
+        msg.content = generate_greeting(message.content)
+    elif nav["status"] == "not_found":
+        msg.content = NOT_FOUND_ANSWER
+    else:  # rejected
+        msg.content = REJECTED_ANSWER
+
+    await msg.update()
 ```
-POST /query
+
+**Step 2 — Citation formatting (markdown):**
+
+`citations` from `generate_answer` are appended to the answer as an Arabic markdown section:
+
+```
+---
+**المصادر:**
+- صافي القيمة البيعية (صفحات 126–127)
+- الاعتراف بالمصروف (صفحات 127–128)
 ```
 
-Request:
-```json
-{ "query": "string" }
+**Step 3 — Auth endpoint:**
+
+Chainlit supports a custom auth hook. A simple `@cl.header_auth_callback` or a mounted Starlette route returning 200 satisfies the frontend's `GET /custom-auth` ping.
+
+**Step 4 — Startup:**
+
+Index and graph are loaded per-session in `@cl.on_chat_start`, not as a global singleton, to keep session state clean. The LLM client singleton in `waraq/llm/client.py` is shared across sessions (safe — it holds no per-request state).
+
+**Step 5 — Run:**
+
+```bash
+uvicorn app.server:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-Response:
-```json
-{
-  "answer": "string",
-  "citation": {
-    "node_id": "string",
-    "title": "string",
-    "pages": { "start": 0, "end": 0 }
-  },
-  "navigation_path": ["string"],
-  "status": "found | not_found | rejected",
-  "language_detected": "ar | en"
-}
-```
+FastAPI mounts Chainlit at `/chainlit` via `mount_chainlit`, exposing the socket.io endpoint the frontend expects. The `custom-auth` and `documents` endpoints are served alongside it on the same port.
 
-**Step 3 — CORS + startup:**
-- CORS configured for frontend origin
-- On startup: load `index.json` into memory once, initialize LangGraph, initialize LLM client
-- Health check endpoint: `GET /health`
-
-**File:** `waraq/api/main.py`, `waraq/api/schemas.py`
+**Files:** `app/server.py`, `app/chainlit_app.py`
 
 ---
 
@@ -447,10 +492,13 @@ Response:
 # .env.example
 VISION_AGENT_API_KEY=
 LLM_BASE_URL=http://localhost:11434/v1
-LLM_MODEL=silma-v1
+LLM_MODEL=qwen3:8b
 LANGFUSE_PUBLIC_KEY=
 LANGFUSE_SECRET_KEY=
 LANGFUSE_HOST=http://localhost:3000
+
+# Chainlit (Stage 7)
+CHAINLIT_AUTH_SECRET=          # any random string, required for auth callbacks
 ```
 
 ---
@@ -462,8 +510,8 @@ LANGFUSE_HOST=http://localhost:3000
 - [ ] Ollama serving the model at `localhost:11434`, health check passing
 - [ ] 5 known test queries return correct leaf nodes via navigation graph
 - [ ] Out-of-domain query returns rejection response
-- [ ] End-to-end query through FastAPI returns Arabic answer with citation
-- [ ] Frontend connected and rendering responses
+- [x] End-to-end query through Chainlit returns streamed Arabic answer with citations
+- [x] Frontend connected and rendering responses
 - [ ] All traces visible in local Langfuse dashboard
 
 ---

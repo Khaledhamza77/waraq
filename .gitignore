@@ -221,3 +221,5 @@ __marimo__/
 data/postgres/
 .chainlit/
 frontend/node_modules/
+uv.lock
+data/postgres
