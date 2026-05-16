@@ -219,3 +219,6 @@ __marimo__/
 
 # personal stuff
 uv.lock
+data/postgres
+frontend/node_modules
+frontend/dist
