@@ -337,8 +337,6 @@ export function Playground() {
             style={{
               flexShrink: 0,
               padding: "12px 0 8px",
-              backgroundColor: "rgba(0,0,0,0.4)",
-              backdropFilter: "blur(12px)",
             }}
           >
             <div style={{ maxWidth: "75%", margin: "0 auto", padding: "0 5px", display: "flex", flexDirection: "column", gap: 6 }}>
