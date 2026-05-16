@@ -87,7 +87,7 @@ class SILMAClient:
         self,
         prompt: str,
         system: str = "",
-        temperature: float = 0.1,
+        temperature: float = 0.0,
         max_tokens: int = 2048,
         think: bool = False,
     ) -> str:
@@ -122,7 +122,7 @@ class SILMAClient:
         prompt: str,
         system: str = "",
         schema: type[BaseModel] | dict[str, Any] | None = None,
-        temperature: float = 0.1,
+        temperature: float = 0.0,
     ) -> dict[str, Any]:
         """Call the model with structured JSON output.
 
