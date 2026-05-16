@@ -597,80 +597,100 @@ export default function ExplorerPage() {
         overflow: "hidden",
       }}
     >
-      {/* ── Header ─────────────────────────────────────────────────────── */}
+      {/* ── Aurora background ───────────────────────────────────────────── */}
+      <div
+        aria-hidden
+        style={{ position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none", overflow: "hidden" }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            top: "50%", left: "50%",
+            width: "140vw", height: "140vw",
+            marginTop: "-70vw", marginLeft: "-70vw",
+            background: `
+              radial-gradient(ellipse 55% 40% at 60% 35%, rgba(124,58,237,0.55) 0%, transparent 70%),
+              radial-gradient(ellipse 45% 50% at 75% 65%, rgba(6,182,212,0.38) 0%, transparent 65%),
+              radial-gradient(ellipse 50% 45% at 30% 70%, rgba(37,99,235,0.45) 0%, transparent 70%)
+            `,
+            filter: "blur(55px)",
+          }}
+        />
+      </div>
+
+      {/* ── Navbar ──────────────────────────────────────────────────────── */}
       <div
         style={{
-          height: 52,
-          borderBottom: "1px solid rgba(255,255,255,0.07)",
-          display: "flex",
-          alignItems: "center",
-          padding: "0 20px",
-          gap: 16,
           flexShrink: 0,
-          background: "rgba(0,0,0,0.6)",
-          backdropFilter: "blur(12px)",
+          position: "relative",
+          zIndex: 100,
+          padding: "16px 32px 0",
         }}
       >
-        <span
-          style={{ fontSize: 16, fontWeight: 700, letterSpacing: "0.02em", color: "#F0F2FF" }}
-        >
-          ورق
-        </span>
-        <span style={{ color: "#2A2D50", fontSize: 16 }}>|</span>
-        <span style={{ fontSize: 13, color: "#6B7280" }}>
-          {indexData?.document.title ?? "تصفح الوثيقة"}
-        </span>
-
-        <div style={{ flex: 1 }} />
-
-        {/* Section info when selected */}
-        {sectionData && !loadingSection && (
-          <span style={{ fontSize: 12, color: activeColor, maxWidth: 300, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {sectionData.title}
-          </span>
-        )}
-        {loadingSection && (
-          <span style={{ fontSize: 12, color: "#4A4F6E" }}>جاري التحميل…</span>
-        )}
-
-        <button
-          onClick={() => navigate("/app")}
+        <nav
           style={{
-            fontFamily: FONT,
-            fontSize: 12,
-            fontWeight: 600,
-            color: "rgba(255,255,255,0.4)",
-            background: "transparent",
-            border: "1px solid rgba(255,255,255,0.1)",
-            borderRadius: 6,
-            padding: "5px 14px",
-            cursor: "pointer",
-            transition: "all 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = "#fff";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.25)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = "rgba(255,255,255,0.4)";
-            e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)";
+            height: 68,
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: 8,
+            boxShadow: "0 8px 32px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(255,255,255,0.04)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "0 28px",
           }}
         >
-          المحادثة
-        </button>
+          {/* Logo */}
+          <img src="/powered_by_finaira.png" alt="Finaira" style={{ height: 30, width: "auto" }} />
+
+          {/* Center: current section title or page subtitle */}
+          <span style={{ fontSize: 13, color: "#4A4F6E", fontFamily: FONT }}>
+            {loadingSection
+              ? "جاري التحميل…"
+              : sectionData
+              ? sectionData.title
+              : "تصفح الوثيقة"}
+          </span>
+
+          {/* Nav action */}
+          <button
+            onClick={() => navigate("/app")}
+            style={{
+              border: "none",
+              background: "transparent",
+              color: "rgba(255,255,255,0.5)",
+              fontFamily: FONT,
+              fontWeight: 600,
+              fontSize: 15,
+              padding: "8px 4px",
+              cursor: "pointer",
+              transition: "color 0.2s ease",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = "#ffffff"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = "rgba(255,255,255,0.5)"; }}
+          >
+            المحادثة
+          </button>
+        </nav>
       </div>
 
       {/* ── Body (viewer + TOC) ─────────────────────────────────────────── */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+      <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative", zIndex: 1, margin: "12px 32px 16px", gap: 12 }}>
 
         {/* Document Viewer — left */}
         <div
           style={{
             flex: 1,
             overflowY: "auto",
-            padding: "32px 24px",
-            paddingBottom: activeChunk ? "calc(42vh + 32px)" : "32px",
-            background: "#0A0C18",
+            padding: "24px",
+            paddingBottom: activeChunk ? "calc(42vh + 24px)" : "24px",
+            background: "rgba(10,12,24,0.75)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: 8,
           }}
         >
           {error && (
@@ -696,9 +716,12 @@ export default function ExplorerPage() {
           style={{
             width: 290,
             flexShrink: 0,
-            borderRight: "1px solid rgba(255,255,255,0.06)",
             overflowY: "auto",
-            background: "#05070F",
+            background: "rgba(5,7,15,0.75)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: 8,
             display: "flex",
             flexDirection: "column",
           }}
