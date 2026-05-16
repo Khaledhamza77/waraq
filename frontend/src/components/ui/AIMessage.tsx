@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { SyncLoader } from "react-spinners";
 import Plot from "react-plotly.js";
 import { ChevronDown } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 export interface AIMessageProps extends Omit<
   MessageProps,
@@ -19,21 +20,38 @@ export interface AIMessageProps extends Omit<
 
 const CITE_SEP = "\n---\n**المصادر:**";
 
-function parseCitations(raw: string): string[] {
+interface Citation {
+  label: string;
+  href: string | null;
+}
+
+function parseCitations(raw: string): Citation[] {
   return raw
     .split("\n")
     .map((l) => l.trim())
     .filter((l) => l.startsWith("- "))
-    .map((l) => l.slice(2));
+    .map((l) => {
+      const body = l.slice(2);
+      // Match markdown link: [label](href)
+      const m = body.match(/^\[(.+?)\]\((.+?)\)$/);
+      if (m) return { label: m[1], href: m[2] };
+      return { label: body, href: null };
+    });
 }
 
 function CitationsBlock({ raw }: { raw: string }) {
   const [open, setOpen] = React.useState(false);
+  const navigate = useNavigate();
   const citations = parseCitations(raw);
   if (citations.length === 0) return null;
 
+  const handleCitationClick = (href: string) => {
+    // href is e.g. /explorer?section=section_3_2_1&page=55
+    navigate(href);
+  };
+
   return (
-    <div style={{ marginTop: 12 }}>
+    <div style={{ marginTop: 12 }} dir="rtl">
       <button
         onClick={() => setOpen((o) => !o)}
         style={{
@@ -73,17 +91,47 @@ function CitationsBlock({ raw }: { raw: string }) {
           }}
         >
           {citations.map((c, i) => (
-            <li
-              key={i}
-              style={{
-                fontSize: 11,
-                color: "rgba(255,255,255,0.3)",
-                lineHeight: 1.5,
-                paddingRight: 8,
-                borderRight: "2px solid rgba(168,85,247,0.25)",
-              }}
-            >
-              {c}
+            <li key={i}>
+              {c.href ? (
+                <button
+                  onClick={() => handleCitationClick(c.href!)}
+                  style={{
+                    fontSize: 11,
+                    color: "rgba(168,85,247,0.6)",
+                    lineHeight: 1.5,
+                    paddingRight: 8,
+                    borderRight: "2px solid rgba(168,85,247,0.25)",
+                    background: "transparent",
+                    borderTop: "none",
+                    borderBottom: "none",
+                    borderLeft: "none",
+                    borderRight: "2px solid rgba(168,85,247,0.25)",
+                    cursor: "pointer",
+                    textAlign: "right",
+                    padding: "0 8px 0 0",
+                    transition: "color 0.15s",
+                    display: "block",
+                    width: "100%",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(168,85,247,1)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(168,85,247,0.6)")}
+                >
+                  {c.label}
+                </button>
+              ) : (
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "rgba(255,255,255,0.3)",
+                    lineHeight: 1.5,
+                    paddingRight: 8,
+                    borderRight: "2px solid rgba(168,85,247,0.25)",
+                    display: "block",
+                  }}
+                >
+                  {c.label}
+                </span>
+              )}
             </li>
           ))}
         </ul>

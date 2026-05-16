@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -428,6 +428,7 @@ function ContentPanel({ chunk, color, onClose }: ContentPanelProps) {
 
 export default function ExplorerPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [indexData, setIndexData]           = useState<IndexData | null>(null);
   const [bboxIds, setBboxIds]               = useState<Set<string>>(new Set());
@@ -519,6 +520,58 @@ export default function ExplorerPage() {
     },
     [selectedId, bboxIds]
   );
+
+  // Auto-open section + page when arriving from a citation link
+  const citationHandled = useRef(false);
+  useEffect(() => {
+    if (citationHandled.current) return;
+    if (!indexData || bboxIds.size === 0) return;
+
+    const sectionId = searchParams.get("section");
+    const page = parseInt(searchParams.get("page") ?? "", 10);
+    if (!sectionId) return;
+
+    citationHandled.current = true;
+
+    function findSection(sections: Section[], id: string): Section | null {
+      for (const s of sections) {
+        if (s.id === id) return s;
+        if (s.children) {
+          const found = findSection(s.children, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    }
+
+    function collectAncestorIds(sections: Section[], id: string, path: string[] = []): string[] {
+      for (const s of sections) {
+        if (s.id === id) return path;
+        if (s.children) {
+          const found = collectAncestorIds(s.children, id, [...path, s.id]);
+          if (found.length) return found;
+        }
+      }
+      return [];
+    }
+
+    const section = findSection(indexData.sections, sectionId);
+    if (!section) return;
+
+    const ancestors = collectAncestorIds(indexData.sections, sectionId);
+    if (ancestors.length) setExpandedIds(new Set(ancestors));
+
+    handleSectionSelect(section).then(() => {
+      const targetPage = !isNaN(page) ? page : section.start_page;
+      if (targetPage) {
+        setTimeout(() => {
+          document
+            .getElementById(`page-${targetPage}`)
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 300);
+      }
+    });
+  }, [indexData, bboxIds, searchParams, handleSectionSelect]);
 
   const handleToggle = useCallback((id: string) => {
     setExpandedIds((prev) => {
