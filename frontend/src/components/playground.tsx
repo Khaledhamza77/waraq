@@ -10,8 +10,6 @@ import {
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { BookOpen, MessageCircle, ArrowLeft, FileSearch } from "lucide-react";
-import { AppShell } from "./ui/Shell";
-import { InputBar } from "./ui/InputBar";
 import { UserMessage } from "./ui/UserMessage";
 import { AIMessage } from "./ui/AIMessage";
 import { TopBar } from "./ui/TopBar";
@@ -199,24 +197,56 @@ export function Playground() {
         flexDirection: "column",
       }}
     >
-      <TopBar />
-      <AppShell
-        className={mode === "pick" ? "max-w-[75%]" : "max-w-[75%] h-full flex flex-col"}
-        outerClassName="flex-1 flex items-center overflow-hidden"
+      {/* Aurora background — shared across modes */}
+      <div
+        aria-hidden
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 0,
+          pointerEvents: "none",
+          overflow: "hidden",
+        }}
       >
-        {/* ── Pick mode: two option cards ── */}
-        {mode === "pick" && (
-          <div
-            className={isLeaving ? "fade-out" : "fade-in"}
-            style={{
-              width: "100%",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: 10,
-              padding: "12px 0 0",
-            }}
-          >
+        <div
+          className="aurora"
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            width: "140vw",
+            height: "140vw",
+            marginTop: "-70vw",
+            marginLeft: "-70vw",
+            background: `
+              radial-gradient(ellipse 55% 40% at 60% 35%, rgba(124,58,237,0.55) 0%, transparent 70%),
+              radial-gradient(ellipse 45% 50% at 75% 65%, rgba(6,182,212,0.38) 0%, transparent 65%),
+              radial-gradient(ellipse 50% 45% at 30% 70%, rgba(37,99,235,0.45) 0%, transparent 70%)
+            `,
+            filter: "blur(55px)",
+          }}
+        />
+      </div>
+
+      <TopBar />
+
+      {/* ── Pick mode ── */}
+      {mode === "pick" && (
+        <div
+          className={isLeaving ? "fade-out" : "fade-in"}
+          style={{
+            flex: 1,
+            minHeight: 0,
+            position: "relative",
+            zIndex: 10,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflowY: "auto",
+            padding: "24px 40px",
+          }}
+        >
+          <div style={{ width: "100%", maxWidth: 860, display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
             <h2
               style={{
                 fontFamily: font,
@@ -248,10 +278,8 @@ export function Playground() {
                 gridTemplateColumns: "1fr 1fr",
                 gap: 20,
                 width: "100%",
-                maxWidth: 860,
               }}
             >
-              {/* Option 1: Document Explorer */}
               <OptionCard
                 icon={<BookOpen size={28} strokeWidth={1.5} />}
                 iconBg="rgba(124,58,237,0.15)"
@@ -261,8 +289,6 @@ export function Playground() {
                 cta="ابدأ الاستعراض"
                 onClick={() => navigate("/explorer")}
               />
-
-              {/* Option 2: Chat */}
               <OptionCard
                 icon={<MessageCircle size={28} strokeWidth={1.5} />}
                 iconBg="rgba(59,130,246,0.15)"
@@ -275,86 +301,104 @@ export function Playground() {
               />
             </div>
           </div>
-        )}
-
-        {/* ── Chat mode: messages ── */}
-        {mode === "chat" && (
-          <div className="fade-in w-full h-full overflow-y-auto px-6 pt-6 pb-40">
-            <div className="space-y-4" dir="ltr">
-              {flatMessages.map((message, index) =>
-                renderMessage(message, index === flatMessages.length - 1),
-              )}
-              <div ref={bottomRef} />
-            </div>
-          </div>
-        )}
-
-      </AppShell>
-
-      {/* ── Input bar (chat mode only) ── */}
-      {mode === "chat" && (
-        <div className="fade-in-opacity">
-          <InputBar ref={inputBarRef} topContent={
-            attachedFiles.length > 0 ? (
-              <AttachedFiles files={attachedFiles} onRemove={removeAttachedFile} />
-            ) : undefined
-          }>
-            <Input
-              ref={inputRef}
-              autoFocus
-              className="flex-1"
-              id="message-input"
-              placeholder="اكتب سؤالك هنا…"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyUp={(e) => { if (e.key === "Enter") handleSendMessage(); }}
-            />
-            <FileUploader
-              accept={ACCEPT}
-              uploading={uploading}
-              onFileSelect={handleFileSelect}
-            />
-            <SendButton
-              onClick={handleSendMessage}
-              type="submit"
-              disabled={!inputValue.trim() || disabled || loading}
-            />
-          </InputBar>
         </div>
       )}
 
-      {/* Go to explorer button — rendered outside any animated wrapper */}
+      {/* ── Chat mode ── */}
       {mode === "chat" && (
-        <button
-          className="fade-in-opacity"
-          onClick={() => navigate("/explorer")}
+        <div
+          className="fade-in"
           style={{
-            position: "fixed",
-            bottom: 18,
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 200,
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            fontFamily: font,
-            fontWeight: 500,
-            fontSize: 12,
-            color: "rgba(255,255,255,0.4)",
-            background: "transparent",
-            border: "none",
-            cursor: "pointer",
-            padding: "4px 8px",
-            transition: "color 0.2s ease",
-            letterSpacing: "0.02em",
+            flex: 1,
+            minHeight: 0,
+            position: "relative",
+            zIndex: 10,
+            display: "flex",
+            flexDirection: "column",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.75)")}
-          onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
         >
-          <FileSearch size={13} strokeWidth={1.5} />
-          تصفح الوثيقة
-          <ArrowLeft size={11} strokeWidth={2} />
-        </button>
+          {/* Scrollable messages — this is the ONLY scroll container */}
+          <div
+            style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "24px 0 0" }}
+            dir="ltr"
+          >
+            <div style={{ maxWidth: "75%", margin: "0 auto", padding: "0 40px" }}>
+              <div className="space-y-4">
+                {flatMessages.map((message, index) =>
+                  renderMessage(message, index === flatMessages.length - 1),
+                )}
+                <div ref={bottomRef} />
+              </div>
+            </div>
+          </div>
+
+          {/* Input area — part of flex flow, never overlaps messages */}
+          <div
+            style={{
+              flexShrink: 0,
+              padding: "12px 0 8px",
+              backgroundColor: "rgba(0,0,0,0.4)",
+              backdropFilter: "blur(12px)",
+            }}
+          >
+            <div style={{ maxWidth: "75%", margin: "0 auto", padding: "0 5px", display: "flex", flexDirection: "column", gap: 6 }}>
+              {attachedFiles.length > 0 && (
+                <AttachedFiles files={attachedFiles} onRemove={removeAttachedFile} />
+              )}
+              <div
+                ref={inputBarRef}
+                className="w-full flex items-center gap-2 rounded-2xl bg-white/5 backdrop-blur-sm border border-white/10 px-4 py-3 text-gray-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] transition"
+              >
+                <Input
+                  ref={inputRef}
+                  autoFocus
+                  className="flex-1"
+                  id="message-input"
+                  placeholder="اكتب سؤالك هنا…"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyUp={(e) => { if (e.key === "Enter") handleSendMessage(); }}
+                />
+                <FileUploader
+                  accept={ACCEPT}
+                  uploading={uploading}
+                  onFileSelect={handleFileSelect}
+                />
+                <SendButton
+                  onClick={handleSendMessage}
+                  type="submit"
+                  disabled={!inputValue.trim() || disabled || loading}
+                />
+              </div>
+              <div style={{ display: "flex", justifyContent: "center" }}>
+                <button
+                  onClick={() => navigate("/explorer")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontFamily: font,
+                    fontWeight: 500,
+                    fontSize: 12,
+                    color: "rgba(255,255,255,0.4)",
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: "4px 8px",
+                    transition: "color 0.2s ease",
+                    letterSpacing: "0.02em",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.75)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = "rgba(255,255,255,0.4)")}
+                >
+                  <FileSearch size={13} strokeWidth={1.5} />
+                  تصفح الوثيقة
+                  <ArrowLeft size={11} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
