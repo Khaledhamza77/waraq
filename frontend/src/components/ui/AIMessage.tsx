@@ -32,8 +32,8 @@ function parseCitations(raw: string): Citation[] {
     .filter((l) => l.startsWith("- "))
     .map((l) => {
       const body = l.slice(2);
-      // Match markdown link: [label](href)
-      const m = body.match(/^\[(.+?)\]\((.+?)\)$/);
+      // Find a markdown link anywhere in the line — no anchors so whitespace/RTL markers don't break it
+      const m = body.match(/\[([^\]]+)\]\(([^)]+)\)/);
       if (m) return { label: m[1], href: m[2] };
       return { label: body, href: null };
     });

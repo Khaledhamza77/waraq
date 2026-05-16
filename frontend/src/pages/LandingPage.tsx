@@ -112,7 +112,7 @@ export default function LandingPage() {
           />
 
           {/* Nav CTA */}
-          <NavButton onClick={() => navigate("/app")}>ادخل التطبيق</NavButton>
+          <NavButton onClick={() => navigate("/app", { state: { fromHome: true } })}>ادخل التطبيق</NavButton>
         </nav>
         </div>
 
@@ -171,7 +171,7 @@ export default function LandingPage() {
             <span style={{ whiteSpace: "nowrap" }}>كل ذلك <strong style={{ color: "#F0F2FF", fontWeight: 600 }}>بالعربية وبلا تعقيد</strong>.</span>
           </p>
 
-          <HeroCTAButton onClick={() => navigate("/app")} />
+          <HeroCTAButton onClick={() => navigate("/app", { state: { fromHome: true } })} />
         </section>
 
         {/* ── Feature Cards ── */}

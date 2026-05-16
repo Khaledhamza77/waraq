@@ -8,7 +8,7 @@ import {
   useChatData,
 } from "@chainlit/react-client";
 import { useMemo, useState, useRef, useEffect, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { BookOpen, MessageCircle, ArrowLeft, FileSearch } from "lucide-react";
 import { UserMessage } from "./ui/UserMessage";
 import { AIMessage } from "./ui/AIMessage";
@@ -57,9 +57,15 @@ function flattenMessages(
 
 export function Playground() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"pick" | "chat">(
-    () => (sessionStorage.getItem("chatMode") as "pick" | "chat") || "pick"
-  );
+  const location = useLocation();
+  const fromHome = (location.state as any)?.fromHome === true;
+  const [mode, setMode] = useState<"pick" | "chat">(() => {
+    if (fromHome) {
+      sessionStorage.removeItem("chatMode");
+      return "pick";
+    }
+    return (sessionStorage.getItem("chatMode") as "pick" | "chat") || "pick";
+  });
   const [isLeaving, setIsLeaving] = useState(false);
 
   const switchToChat = () => {
