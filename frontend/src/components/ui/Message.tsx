@@ -47,7 +47,6 @@ export const Message: React.FC<MessageProps> = React.memo(({
           bubbleClassName,
         )}
       >
-        {children}
         {/* prose-invert: light colors on dark bg; typography plugin handles sizing */}
         <div className="prose prose-invert max-w-none" dir="auto">
           <ReactMarkdown
@@ -94,6 +93,8 @@ export const Message: React.FC<MessageProps> = React.memo(({
             {text}
           </ReactMarkdown>
         </div>
+
+        {children}
 
         {meta ? (
           <div
