@@ -1,102 +1,39 @@
 uv run pytest tests/test_navigation.py -v -s --log-cli-level=DEBUG --log-cli-format="%(name)s %(message)s"
 
 # Error in navigation test pytest
-________________________________________________________________________ test_inventory_standard_objective ________________________________________________________________________
-
-graph_config = (<langgraph.graph.state.CompiledStateGraph object at 0x000002E0A61E4770>, {'configurable': {'index': {'document': {'la..., ...]}, 'markdown_dir': WindowsPath('C:/Users/KhaledIbrahim/Documents/playground/waraq/data/parsed/markdown/pages')}})
-
-    def test_inventory_standard_objective(graph_config):
-        """Objective of inventory standard → anywhere in section_5."""
-        result = _run(graph_config, "ما هو هدف معيار المحاسبة المصري رقم 2 الخاص بالمخزون؟")
->       assert result["status"] == "found"
-E       AssertionError: assert 'not_found' == 'found'
-E         
-E         - found
-E         + not_found
-
-tests\test_navigation.py:91: AssertionError
--------------------------------------------------------------------------------- Captured log call --------------------------------------------------------------------------------
+tests/test_nav_responder.py::test_income_recognition_e2e 
+--------------------------------------------------------------------------------------------------------------------------------------------------- live log call ----------------------------------------------------------------------------------------------------------------------------------------------------
+DEBUG    test_nav_responder:test_nav_responder.py:53 
+DEBUG    test_nav_responder:test_nav_responder.py:54 ╔══════════════════════════════════════════════════════════╗
+DEBUG    test_nav_responder:test_nav_responder.py:55   QUERY: متى يتم الاعتراف بالدخل في القوائم المالية؟
+DEBUG    test_nav_responder:test_nav_responder.py:56 ╚══════════════════════════════════════════════════════════╝
 DEBUG    waraq.navigation.nodes:nodes.py:115 ── navigate_level ──────────────────────────
 DEBUG    waraq.navigation.nodes:nodes.py:116   path so far : [root]
 DEBUG    waraq.navigation.nodes:nodes.py:127   candidates  : ['section_1 (الصفحات التمهيدية)', 'section_2 (المقدمة)', 'section_3 (إطار إعداد وعرض القوائم المالية)', 'section_4 (معيار المحاسبة المصري رقم (1) عرض القوائم المالية)', 'section_5 (معيار المحاسبة رقم (2) المخزون)', 'section_6 (معيار المحاسبة المصري رقم (4) قائمة التدفقات النقدية)', 'section_7 (معيار المحاسبة المصري رقم (5) السياسات المحاسبية والتغييرات في التقديرات المحاسبية والأخطاء)', 'section_8 (معيار المحاسبة المصري رقم (7) الأحداث التي تقع بعد الفترة المالية)', 'section_9 (معيار المحاسبة المصري رقم (10) الأصول الثابتة وإهلاكاتها)']
-DEBUG    waraq.navigation.nodes:nodes.py:152   llm selected: ['section_5']
-DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : القسم 5 يحمل عنوانًا مباشرًا 'معيار المحاسبة رقم (2) المخزون' ويغطي جميع الجوانب المتعلقة بقياس وتسجيل المخزون وفقًا لمعايير المحاسبة المصرية، بما في ذلك الغرض من المعيار الذي يُحدد طرق قياس التكلفة وتطبيق مبدأ القيمة الأقل بين التكلفة والقيمة البيعية الصافية، مما يجعله الأقرب للسؤال.
+DEBUG    waraq.navigation.nodes:nodes.py:152   llm selected: ['section_3']
+DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : القسم 3 يتناول الإطار المفاهيمي لعناصر القوائم المالية، بما في ذلك تعريف الدخل ومعايير الاعتراف به، وهو ما يجيب مباشرة على سؤال متى يتم الاعتراف بالدخل في القوائم المالية.
 DEBUG    waraq.navigation.nodes:nodes.py:171   node types  : 0 leaf(s), 1 non-leaf(s)
-DEBUG    waraq.navigation.nodes:nodes.py:180   → descending into 'section_5' (معيار المحاسبة رقم (2) المخزون)
+DEBUG    waraq.navigation.nodes:nodes.py:180   → descending into 'section_3' (إطار إعداد وعرض القوائم المالية)
 DEBUG    waraq.navigation.nodes:nodes.py:115 ── navigate_level ──────────────────────────
-DEBUG    waraq.navigation.nodes:nodes.py:116   path so far : ['section_5']
-DEBUG    waraq.navigation.nodes:nodes.py:127   candidates  : ['section_5_1 (فهرس ومقدمة)', 'section_5_2 (هدف المعيار)', 'section_5_3 (نطاق المعيار)', 'section_5_4 (تعريفات)', 'section_5_5 (قياس المخزون)', 'section_5_6 (تكلفة المخزون)', 'section_5_7 (تكاليف الشراء)', 'section_5_8 (تكاليف التشكيل)', 'section_5_9 (التكاليف الأخرى)', 'section_5_10 (تكلفة المخزون في المنشآت الخدمية)', 'section_5_11 (تكلفة المنتجات الزراعية المحصودة من الأصول البيولوجية)', 'section_5_12 (أساليب قياس التكلفة)', 'section_5_13 (طرق حساب التكلفة)', 'section_5_14 (صافي القيمة البيعية)', 'section_5_15 (الاعتراف بالمصروف)', 'section_5_16 (الإفصاح)']
-WARNING  waraq.llm.client:client.py:117 structured(): JSON decode error on attempt 1/2: Expecting value: line 1 column 1 (char 0) | raw:  ihtiya
-</think>
-
-{
-  "sections": ["5_14", "5_15", "5_16"]
-}
-WARNING  waraq.llm.client:client.py:117 structured(): JSON decode error on attempt 2/2: Expecting value: line 1 column 1 (char 0) | raw: ですよね
-
-Okay, let's tackle this query. The user is asking about the cost of agricultural products harvested from biological assets, specifically how to measure their cost after harvest. 
-
-First, I need 
-ERROR    waraq.llm.client:client.py:121 structured(): failed to decode JSON after 2 attempts, returning {}
-DEBUG    waraq.navigation.nodes:nodes.py:152   llm selected: []
-DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : 
-DEBUG    waraq.navigation.nodes:nodes.py:156   → selected_ids is empty, not_found
-
-___________________________________________________________________________ test_inventory_measurement ____________________________________________________________________________
-
-graph_config = (<langgraph.graph.state.CompiledStateGraph object at 0x000002E0A61E4770>, {'configurable': {'index': {'document': {'la..., ...]}, 'markdown_dir': WindowsPath('C:/Users/KhaledIbrahim/Documents/playground/waraq/data/parsed/markdown/pages')}})
-
-    def test_inventory_measurement(graph_config):
-        """Inventory measurement → anywhere in section_5."""
-        result = _run(graph_config, "كيف يتم قياس المخزون وفق معايير المحاسبة المصرية؟")
->       assert result["status"] == "found"
-E       AssertionError: assert 'not_found' == 'found'
-E         
-E         - found
-E         + not_found
-
-tests\test_navigation.py:67: AssertionError
--------------------------------------------------------------------------------- Captured log call --------------------------------------------------------------------------------
-DEBUG    waraq.navigation.nodes:nodes.py:115 ── navigate_level ──────────────────────────
-DEBUG    waraq.navigation.nodes:nodes.py:116   path so far : [root]
-DEBUG    waraq.navigation.nodes:nodes.py:127   candidates  : ['section_1 (الصفحات التمهيدية)', 'section_2 (المقدمة)', 'section_3 (إطار إعداد وعرض القوائم المالية)', 'section_4 (معيار المحاسبة المصري رقم (1) عرض القوائم المالية)', 'section_5 (معيار المحاسبة رقم (2) المخزون)', 'section_6 (معيار المحاسبة المصري رقم (4) قائمة التدفقات النقدية)', 'section_7 (معيار المحاسبة المصري رقم (5) السياسات المحاسبية والتغييرات في التقديرات المحاسبية والأخطاء)', 'section_8 (معيار المحاسبة المصري رقم (7) الأحداث التي تقع بعد الفترة المالية)', 'section_9 (معيار المحاسبة المصري رقم (10) الأصول الثابتة وإهلاكاتها)']
-DEBUG    waraq.navigation.nodes:nodes.py:152   llm selected: ['section_5']
-DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : القسم 5 يتناول بشكل مباشر طريقة قياس المخزون وفقًا لمعايير المحاسبة المصرية، بما في ذلك طرق التكلفة وتطبيق مبدأ القيمة الأقل بين التكلفة والقيمة البيعية الصافية، وهو ما يتوافق تمامًا مع سؤال المستخدم.
+DEBUG    waraq.navigation.nodes:nodes.py:116   path so far : ['section_3']
+DEBUG    waraq.navigation.nodes:nodes.py:127   candidates  : ['section_3_1 (فهرس ومقدمة)', 'section_3_2 (الجزء (1) الهدف من القوائم المالية ذات الأغراض العامة)', 'section_3_3 (الجزء (2) المنشأة المصدرة للقوائم المالية)', 'section_3_4 (الجزء (3) الخصائص النوعية للمعلومات المفيدة)', 'section_3_5 (الجزء (4) النصوص المتبقية)']
+DEBUG    waraq.navigation.nodes:nodes.py:152   llm selected: ['section_3_5']
+DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : القسم (4) النصوص المتبقية يغطي تعريف عناصر القوائم المالية بما في ذلك الدخل، ويشمل معايير الاعتراف بها مثل توقع تدفق المنافع الاقتصادية المستقبلية، وهو ما يجيب مباشرة على سؤال متى يتم الاعتراف بالدخل.
 DEBUG    waraq.navigation.nodes:nodes.py:171   node types  : 0 leaf(s), 1 non-leaf(s)
-DEBUG    waraq.navigation.nodes:nodes.py:180   → descending into 'section_5' (معيار المحاسبة رقم (2) المخزون)
+DEBUG    waraq.navigation.nodes:nodes.py:180   → descending into 'section_3_5' (الجزء (4) النصوص المتبقية)
 DEBUG    waraq.navigation.nodes:nodes.py:115 ── navigate_level ──────────────────────────
-DEBUG    waraq.navigation.nodes:nodes.py:116   path so far : ['section_5']
-DEBUG    waraq.navigation.nodes:nodes.py:127   candidates  : ['section_5_1 (فهرس ومقدمة)', 'section_5_2 (هدف المعيار)', 'section_5_3 (نطاق المعيار)', 'section_5_4 (تعريفات)', 'section_5_5 (قياس المخزون)', 'section_5_6 (تكلفة المخزون)', 'section_5_7 (تكاليف الشراء)', 'section_5_8 (تكاليف التشكيل)', 'section_5_9 (التكاليف الأخرى)', 'section_5_10 (تكلفة المخزون في المنشآت الخدمية)', 'section_5_11 (تكلفة المنتجات الزراعية المحصودة من الأصول البيولوجية)', 'section_5_12 (أساليب قياس التكلفة)', 'section_5_13 (طرق حساب التكلفة)', 'section_5_14 (صافي القيمة البيعية)', 'section_5_15 (الاعتراف بالمصروف)', 'section_5_16 (الإفصاح)']
-WARNING  waraq.llm.client:client.py:117 structured(): JSON decode error on attempt 1/2: Expecting value: line 1 column 1 (char 0) | raw:  justifyContent: "center",
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: "#f0f0f0",
-    borderRadius: 10,
-    width: "100%",
-    height: "100%",
-    display: "flex",
-    flexDirectio
-WARNING  waraq.llm.client:client.py:117 structured(): JSON decode error on attempt 2/2: Expecting value: line 1 column 1 (char 0) | raw: เตรียมคำตอบ:
-</think>
-
-{
-  "sections": ["5_14", "5_15", "5_16"]
-}
-ERROR    waraq.llm.client:client.py:121 structured(): failed to decode JSON after 2 attempts, returning {}
+DEBUG    waraq.navigation.nodes:nodes.py:116   path so far : ['section_3', 'section_3_5']
+DEBUG    waraq.navigation.nodes:nodes.py:127   candidates  : ['section_3_5_1 (فهرس ومقدمة)', 'section_3_5_2 (الافتراضات والاستمرارية)', 'section_3_5_3 (عناصر القوائم المالية)', 'section_3_5_4 (المركز المالي)', 'section_3_5_5 (الاصول)', 'section_3_5_6 (الالتزامات)', 'section_3_5_7 (حقوق الملكية)', 'section_3_5_8 (الأداء)', 'section_3_5_9 (الدخل)', 'section_3_5_10 (المصروفات)', 'section_3_5_11 (تسويات الحفاظ على رأس المال)', 'section_3_5_12 (الاعتراف بعناصر القوائم المالية)', 'section_3_5_13 (توقع تحقق منافع اقتصادية مستقبلية)', 'section_3_5_14 (مصداقية المقياس)', 'section_3_5_15 (الاعتراف بالأصول)', 'section_3_5_16 (الاعتراف بالالتزامات)', 'section_3_5_17 (الاعتراف بالدخل)', 'section_3_5_18 (الاعتراف بالمصروفات)', 'section_3_5_19 (قياس عناصر القوائم المالية)', 'section_3_5_20 (مفاهيم رأس المال والحفاظ على رأس المال)']
 DEBUG    waraq.navigation.nodes:nodes.py:152   llm selected: []
-DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : 
+DEBUG    waraq.navigation.nodes:nodes.py:153   reasoning   : لا يوجد سؤال من المستخدم لتحديد الأقسام ذات الصلة.
 DEBUG    waraq.navigation.nodes:nodes.py:156   → selected_ids is empty, not_found
-_____________________________________________________________________________ test_income_recognition _____________________________________________________________________________
-
-graph_config = (<langgraph.graph.state.CompiledStateGraph object at 0x000002E0A61E4770>, {'configurable': {'index': {'document': {'la..., ...]}, 'markdown_dir': WindowsPath('C:/Users/KhaledIbrahim/Documents/playground/waraq/data/parsed/markdown/pages')}})
-
-    def test_income_recognition(graph_config):
-        """Income recognition → section_3_5 or section_4."""
-        result = _run(graph_config, "متى يتم الاعتراف بالدخل في القوائم المالية؟")
->       assert result["status"] == "found"
-E       AssertionError: assert 'not_found' == 'found'
-E         
-E         - found
-E         + not_found
-
-tests\test_navigation.py:83: AssertionError
+DEBUG    test_nav_responder:test_nav_responder.py:71 ── Navigation result ──────────────────────────────────────
+DEBUG    test_nav_responder:test_nav_responder.py:72   status          : not_found
+DEBUG    test_nav_responder:test_nav_responder.py:73   intent          : valid
+DEBUG    test_nav_responder:test_nav_responder.py:74   language        : ar
+DEBUG    test_nav_responder:test_nav_responder.py:75   normalized query: متى يتم الاعتراف بالدخل في القوائم المالية؟
+DEBUG    test_nav_responder:test_nav_responder.py:76   navigation path : ['section_3', 'section_3_5']
+DEBUG    test_nav_responder:test_nav_responder.py:82   content length  : 0 chars
+DEBUG    test_nav_responder:test_nav_responder.py:114 ── not_found: canned response returned, no LLM call
+FAILED                                                                                                                                                                                                                                                                                                          [ 66%]
+tests/test_nav_responder.py::test_inventory_standard_objective_e2e 
