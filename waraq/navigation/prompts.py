@@ -142,9 +142,9 @@ def answer_prompt(query: str, leaf_metadata: list[dict], leaf_content: str) -> s
         for m in leaf_metadata
     )
     return (
-        f"السؤال: {query}\n\n"
         f"المصادر: {sources}\n\n"
         f"النص التنظيمي:\n{leaf_content}\n\n"
+        f"السؤال: {query}\n\n"
         "بناءً على النص أعلاه فقط، أجب على السؤال بشكل كامل ومفصّل."
     )
 
