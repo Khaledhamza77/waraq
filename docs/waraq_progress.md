@@ -704,3 +704,124 @@ Full setup walkthrough: `docs/langfuse_setup.md`
 - [ ] Langfuse account + API keys created at `http://localhost:3000`
 - [ ] Keys added to `.env`, `chainlit run` restarted
 - [ ] Trace verified in Langfuse UI after a live query
+
+---
+
+## Sprint — Speed Optimisation & Cloud Inference (2026-05-18) ✅
+
+**Status:** Complete  
+**Files:** `waraq/llm/client.py`, `waraq/navigation/nodes.py`, `waraq/navigation/graph.py`, `waraq/navigation/prompts.py`, `waraq/generation/responder.py`, `app/chainlit_app.py`, `tests/test_navigation.py`, `tests/test_nav_responder.py`, `tests/test_chainlit_app.py`, `.env`
+
+---
+
+### 1 — Merged `check_intent` + `normalize_query` → `classify_and_normalize`
+
+**Motivation:** 4–5 sequential LLM calls were taking ~17 s on Ollama. The first two nodes (`check_intent` and `normalize_query`) were independent tasks that could be expressed as two sequential steps inside a single structured call, saving one full round-trip.
+
+**Changes:**
+
+- `waraq/navigation/nodes.py` — removed `IntentResult`, `check_intent`, `normalize_query`. Added `ClassifyAndNormalizeResult` (Pydantic: `intent`, `reason`, `normalized_query`, `language`) and `classify_and_normalize` node. Arabic detection via `[؀-ۿ]` regex runs before the LLM call so language is known upfront; the LLM still returns `language` in its JSON for confirmation.
+- `waraq/navigation/graph.py` — graph simplified from 3 nodes + 4 edges to 2 nodes + 2 conditional edges (`classify_and_normalize → navigate_level`). `_route_classify` gates on `"rejected"/"greeting"` → `END`; `_route_navigate` loops on `"navigating"`.
+- `waraq/navigation/prompts.py` — removed 4 old prompt functions. Added:
+  - `classify_and_normalize_system()` — two-step procedural prompt: Step 1 classifies intent (`valid/greeting/invalid`), Step 2 normalises query (translate if English, correct spelling if Arabic). Always normalises regardless of intent to eliminate cross-field conditional dependency.
+  - `classify_and_normalize_prompt(query, language)` — minimal two-line user message.
+- `app/chainlit_app.py` — `_NODE_STATUS` dict updated: `"check_intent"` and `"normalize_query"` keys removed, `"classify_and_normalize"` key added.
+
+**Token budgets tightened:**
+- `classify_and_normalize`: `max_tokens=300, num_ctx=4096`
+- `navigate_level`: `max_tokens=300, num_ctx=8192`
+
+**Tests updated:**
+- `tests/test_navigation.py` — added `test_classify_and_normalize_populates_all_state_fields` (integration).
+- `tests/test_chainlit_app.py` — added `test_node_status_reflects_merged_node` (unit, no Ollama).
+- `tests/test_nav_responder.py` — updated docstring and log line to reflect merged node name.
+
+---
+
+### 2 — Cloud inference via OpenAI API
+
+**Motivation:** Cloud models (OpenAI) are faster and more reliable than local Ollama for production use. A single env-var toggle was added so the same codebase serves both local and cloud.
+
+**Changes — `waraq/llm/client.py`:**
+
+- `_LOCAL` flag: `os.getenv("LOCAL_INFERENCE", "").strip().lower() in ("1", "true", "t", "yes")`.
+- `SILMAClient.__init__` branches on `_LOCAL`:
+  - `True` → `OpenAI(base_url=_BASE_URL, api_key="ollama")`, model from `LLM_MODEL`.
+  - `False` → `OpenAI(api_key=_OPENAI_API_KEY)`, model from `OPENAI_MODEL`. Raises `EnvironmentError` immediately if `OPENAI_API_KEY` is empty (fast-fail at startup, not mid-request).
+- `complete()` and `structured()` — `extra_body` (`num_ctx`, `think`) passed only when `_is_local`.
+- `structured()` — uses `json_schema` response format for Ollama; `json_object` for OpenAI (GPT models follow instruction-based JSON schemas without enforcement).
+- Token limit parameter: newer OpenAI models reject `max_tokens`; use `max_completion_tokens` instead. Both methods now compute `tokens_key = "max_tokens" if self._is_local else "max_completion_tokens"` and unpack it into kwargs.
+- `complete()` — added `num_ctx: int = 32768` parameter (was previously hardcoded in `extra_body`), matching `structured()`.
+
+**Changes — `.env`:**
+- `LOCAL_INFERENCE=true` (default — preserves Ollama behaviour).
+- `OPENAI_MODEL=gpt-5.4-mini` (set to latest available model).
+
+---
+
+### 3 — Per-call response timing
+
+**Motivation:** Needed visibility into which LLM call is the bottleneck when running both Ollama and OpenAI.
+
+**Changes:**
+
+- `waraq/llm/client.py` — `time.perf_counter()` wrap around every `self._client.chat.completions.create()` call in both `complete()` and `structured()`. Logged at `INFO`:
+  ```
+  complete() 3.14s | model=gpt-5.4-mini | tokens=312+87
+  structured() attempt=1 1.82s | model=qwen3:8b | tokens=210+45
+  ```
+- `tests/test_nav_responder.py` — phase + total timing logged at `INFO` at end of `_run_full()`:
+  ```
+  ⏱  navigation=8.21s | generation=4.03s | total=12.24s
+  ```
+- `tests/test_navigation.py` — navigation-only timing per `_run()` call:
+  ```
+  ⏱  navigation=6.87s | status=found
+  ```
+
+Run tests with `--log-cli-level=INFO` to see timing output.
+
+---
+
+### 4 — Navigation section cap (multi-select)
+
+**Motivation:** The navigation agent was occasionally returning more than 3 leaf sections, producing over-long contexts for the answer model.
+
+**Changes — `waraq/navigation/prompts.py`:**
+
+- `navigate_level_system()` — final-stage rule changed from "واحد أو أكثر" to "ثلاثة أقسام على الأكثر، رتّبها من الأكثر صلةً إلى الأقل".
+- `navigate_level_prompt()` multi-select instruction — changed to "واحد على الأقل وثلاثة على الأكثر، مرتبةً من الأكثر صلةً إلى الأقل".
+
+Both the system prompt and the user prompt carry the cap to avoid contradictions.
+
+---
+
+### 5 — Answer generation: truncation fix + prompt redesign
+
+**Truncation fix — `waraq/generation/responder.py`:**  
+`generate_answer` now passes `max_tokens=4096` (up from the 2048 default). Long Arabic answers about accounting standards were being cut off mid-sentence.
+
+**Prompt redesign — `waraq/navigation/prompts.py`:**
+
+`answer_system()` replaced with a four-rule numbered contract:
+1. Answer only what was asked — don't explain uncovered content.
+2. Be thorough and precise without over-explaining.
+3. If the text contains related topics not covered by the question, list them briefly under **مواضيع ذات صلة** (one line each, no elaboration).
+4. No information outside the provided text.
+
+`answer_prompt()` — regulatory text moved before sources (model reads context before metadata); closing instruction reinforces the two-tier structure without repeating all rules.
+
+---
+
+### Definition of done — Sprint 2026-05-18
+
+- [x] `classify_and_normalize` node merged and tested
+- [x] Graph simplified to 2 nodes
+- [x] `LOCAL_INFERENCE` toggle implemented in `SILMAClient`
+- [x] `max_tokens` → `max_completion_tokens` fix for newer OpenAI models
+- [x] `EnvironmentError` on missing `OPENAI_API_KEY` when cloud mode is active
+- [x] `num_ctx` parameter added to `complete()` (was hardcoded)
+- [x] Per-call timing in `client.py`, phase/total timing in test helpers
+- [x] Multi-select cap at 3, ranked by relevance
+- [x] `generate_answer` max_tokens raised to 4096
+- [x] Answer prompt redesigned with two-tier output structure

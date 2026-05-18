@@ -1,0 +1,7 @@
+structured(): JSON decode error on attempt 1/2: Expecting value: line 1 column 1 (char 0) | raw: .RemoveAt
+</think>
+
+بناءً على النص المقدم، نجد أن الشركة "أ ب ج" قد قدمت ثلاثة أنواع مختلفة من قائمة الدخل، وهي:
+
+### 1. **قائمة الدخل وفقًا لتصنيف التكاليف حسب وظيفتها (Cost by Function):**
+- تُظهر ه
