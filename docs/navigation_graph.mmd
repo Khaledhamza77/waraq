@@ -5,15 +5,13 @@ config:
 ---
 graph TD;
 	__start__([<p>__start__</p>]):::first
-	check_intent(check_intent)
-	normalize_query(normalize_query)
+	classify_and_normalize(classify_and_normalize)
 	navigate_level(navigate_level)
 	__end__([<p>__end__</p>]):::last
-	__start__ --> check_intent;
-	check_intent -.-> __end__;
-	check_intent -.-> normalize_query;
+	__start__ --> classify_and_normalize;
+	classify_and_normalize -.-> __end__;
+	classify_and_normalize -.-> navigate_level;
 	navigate_level -.-> __end__;
-	normalize_query --> navigate_level;
 	navigate_level -.-> navigate_level;
 	classDef default fill:#f2f0ff,line-height:1.2
 	classDef first fill-opacity:0
