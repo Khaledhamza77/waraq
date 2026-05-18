@@ -1,6 +1,6 @@
 # waraq — Repository Overview Checkpoint
 **Date:** 2026-05-18  
-**Branch:** speed  
+**Branch:** main  
 **Last commit:** cloud models + prompt improvements + fixing some bugs
 
 ---
