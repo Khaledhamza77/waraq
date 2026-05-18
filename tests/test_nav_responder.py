@@ -2,7 +2,7 @@
 End-to-end integration: Navigation → Response generation.
 
 For each known-answer query, runs the full pipeline:
-  normalize → intent check → navigate → generate_answer / generate_greeting
+  classify_and_normalize → navigate → generate_answer / generate_greeting
 and asserts both navigation correctness and response quality (answer text +
 citation shape).
 
@@ -11,6 +11,7 @@ Skip without Ollama: pytest -m "not integration"
 """
 import json
 import logging
+import time
 from pathlib import Path
 
 import pytest
@@ -66,7 +67,11 @@ def _run_full(graph_config, query: str) -> dict:
         "status": "",
     }
 
+    t_total_start = time.perf_counter()
+
+    t0 = time.perf_counter()
     nav = graph.invoke(initial, config=config)
+    t_nav = time.perf_counter() - t0
 
     log.debug("── Navigation result ──────────────────────────────────────")
     log.debug("  status          : %s", nav["status"])
@@ -83,16 +88,20 @@ def _run_full(graph_config, query: str) -> dict:
 
     status = nav["status"]
 
+    t_gen = 0.0
+
     if status == "found":
         log.debug("── Sending to responder ───────────────────────────────────")
         log.debug("  query (normalized): %s", nav["query"])
         log.debug("  sources passed    : %d leaf(s)", len(nav["leaf_metadata"]))
 
+        t0 = time.perf_counter()
         response = generate_answer(
             query=nav["query"],
             leaf_content=nav["leaf_content"],
             leaf_metadata=nav["leaf_metadata"],
         )
+        t_gen = time.perf_counter() - t0
 
         log.debug("── Responder output ───────────────────────────────────────")
         log.debug("  answer (first 300 chars):")
@@ -106,7 +115,9 @@ def _run_full(graph_config, query: str) -> dict:
 
     elif status == "greeting":
         log.debug("── Greeting → responder ───────────────────────────────────")
+        t0 = time.perf_counter()
         greeting_text = generate_greeting(nav["original_query"])
+        t_gen = time.perf_counter() - t0
         response = {"answer": greeting_text, "citations": []}
         log.debug("  greeting (first 300 chars):")
         log.debug("    %s", greeting_text[:300])
@@ -117,7 +128,13 @@ def _run_full(graph_config, query: str) -> dict:
 
     else:  # rejected
         response = {"answer": "", "citations": []}
-        log.debug("── rejected: pipeline stopped at intent check, no response")
+        log.debug("── rejected: pipeline stopped at classify_and_normalize, no response")
+
+    t_total = time.perf_counter() - t_total_start
+    log.info(
+        "⏱  navigation=%.2fs | generation=%.2fs | total=%.2fs",
+        t_nav, t_gen, t_total,
+    )
 
     return {"nav": nav, "response": response}
 

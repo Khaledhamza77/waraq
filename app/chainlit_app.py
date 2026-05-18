@@ -34,8 +34,7 @@ _MARKDOWN_DIR = _ROOT / "data" / "parsed" / "markdown" / "pages"
 # ── Node → Arabic status string ───────────────────────────────────────────────
 
 _NODE_STATUS: dict[str, str] = {
-    "check_intent": "جاري تحليل نية السؤال...",
-    "normalize_query": "جاري توحيد صياغة السؤال...",
+    "classify_and_normalize": "جاري تحليل السؤال وتوحيد صياغته...",
     "rephrase_and_retry": "جاري إعادة صياغة السؤال للبحث مجدداً...",
 }
 
@@ -99,7 +98,7 @@ async def on_message(message: cl.Message) -> None:
     token = set_trace_parent(trace)
 
     # ── Initial Chainlit status bubble ────────────────────────────────────────
-    msg = cl.Message(content=_NODE_STATUS["check_intent"])
+    msg = cl.Message(content=_NODE_STATUS["classify_and_normalize"])
     await msg.send()
 
     # ── Build initial NavigationState ─────────────────────────────────────────

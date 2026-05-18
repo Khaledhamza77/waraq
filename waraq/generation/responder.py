@@ -37,6 +37,7 @@ def generate_answer(
     answer = get_client().complete(
         prompt=answer_prompt(query, leaf_metadata, leaf_content),
         system=answer_system(),
+        max_tokens=4096,
     )
     if not answer:
         log.error("generate_answer: complete() returned empty string")

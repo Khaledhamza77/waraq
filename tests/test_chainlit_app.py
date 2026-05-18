@@ -148,6 +148,13 @@ def test_span_output_excludes_leaf_content():
     assert out["navigation_path"] == ["section_3", "section_3_4"]
 
 
+def test_node_status_reflects_merged_node():
+    """_NODE_STATUS must have the merged node key and not the two removed ones."""
+    assert "classify_and_normalize" in chainlit_app._NODE_STATUS
+    assert "check_intent" not in chainlit_app._NODE_STATUS
+    assert "normalize_query" not in chainlit_app._NODE_STATUS
+
+
 def test_graph_stream_failure_shows_arabic_error():
     """graph.astream raising must produce a user-facing Arabic error, not a crash."""
 

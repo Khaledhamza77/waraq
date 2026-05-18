@@ -6,9 +6,13 @@ Run with: pytest tests/test_navigation.py -v --log-cli-level=DEBUG
 Skip in environments without Ollama: pytest -m "not integration"
 """
 import json
+import logging
+import time
 from pathlib import Path
 
 import pytest
+
+log = logging.getLogger(__name__)
 
 from waraq.navigation.graph import build_graph
 from waraq.navigation.state import NavigationState
@@ -39,7 +43,11 @@ def _run(graph_config, query: str) -> NavigationState:
         "leaf_metadata": [],
         "status": "",
     }
-    return graph.invoke(initial, config=config)
+    t0 = time.perf_counter()
+    result = graph.invoke(initial, config=config)
+    elapsed = time.perf_counter() - t0
+    log.info("⏱  navigation=%.2fs | status=%s", elapsed, result.get("status"))
+    return result
 
 
 def _found_in(result: NavigationState, section_prefix: str) -> bool:
@@ -91,6 +99,17 @@ def test_inventory_standard_objective(graph_config):
     assert result["status"] == "found"
     assert result["leaf_metadata"]
     assert _found_in(result, "section_5")
+
+
+# ── classify_and_normalize contract ──────────────────────────────────────────
+
+def test_classify_and_normalize_populates_all_state_fields(graph_config):
+    """classify_and_normalize must set query, language, intent, and status in one pass."""
+    result = _run(graph_config, "ما هي الخصائص النوعية الأساسية للمعلومات المالية المفيدة؟")
+    assert result.get("intent") == "valid", "intent must be 'valid' for an accounting query"
+    assert result.get("language") in ("ar", "en"), "language must be detected"
+    assert result.get("query"), "normalized query must be non-empty"
+    assert result.get("status") != "", "status must be set"
 
 
 # ── Rejection ─────────────────────────────────────────────────────────────────

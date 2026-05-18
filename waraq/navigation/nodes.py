@@ -10,12 +10,10 @@ from pydantic import BaseModel
 
 from waraq.llm.client import get_client
 from waraq.navigation.prompts import (
-    check_intent_prompt,
-    check_intent_system,
+    classify_and_normalize_prompt,
+    classify_and_normalize_system,
     navigate_level_prompt,
     navigate_level_system,
-    normalize_query_prompt,
-    normalize_query_system,
 )
 from waraq.navigation.state import NavigationState
 
@@ -27,9 +25,11 @@ _MAX_DEPTH = 10
 
 # ── Pydantic schemas ──────────────────────────────────────────────────────────
 
-class IntentResult(BaseModel):
+class ClassifyAndNormalizeResult(BaseModel):
     intent: Literal["valid", "invalid", "greeting"]
     reason: str
+    normalized_query: str
+    language: Literal["ar", "en"]
 
 
 class NavigationSelection(BaseModel):
@@ -78,31 +78,29 @@ def _extract_leaf_content(node: dict, markdown_dir: Path) -> str:
 
 # ── Graph nodes ───────────────────────────────────────────────────────────────
 
-def normalize_query(state: NavigationState) -> dict[str, Any]:
+def classify_and_normalize(state: NavigationState) -> dict[str, Any]:
     query = state["original_query"]
     language = "ar" if _ARABIC_RE.search(query) else "en"
 
-    normalized = get_client().complete(
-        prompt=normalize_query_prompt(query, language),
-        system=normalize_query_system(),
-    )
-    return {"query": normalized.strip(), "language": language}
-
-
-def check_intent(state: NavigationState) -> dict[str, Any]:
     result = get_client().structured(
-        prompt=check_intent_prompt(state["original_query"]),
-        system=check_intent_system(),
-        schema=IntentResult,
+        prompt=classify_and_normalize_prompt(query, language),
+        system=classify_and_normalize_system(),
+        schema=ClassifyAndNormalizeResult,
+        max_tokens=300,
+        num_ctx=4096,
     )
     intent = result.get("intent", "invalid")
+    normalized = (result.get("normalized_query") or "").strip() or query
+    lang_out = result.get("language") or language
+
     if intent == "valid":
         status = "navigating"
     elif intent == "greeting":
         status = "greeting"
-    else:  # "invalid" or any unexpected value
+    else:
         status = "rejected"
-    return {"intent": intent, "status": status}
+
+    return {"intent": intent, "query": normalized, "language": lang_out, "status": status}
 
 
 def navigate_level(state: NavigationState, config: RunnableConfig) -> dict[str, Any]:
@@ -138,6 +136,8 @@ def navigate_level(state: NavigationState, config: RunnableConfig) -> dict[str, 
         prompt=navigate_level_prompt(state["query"], candidates, multi_select=all_leaves),
         system=navigate_level_system(),
         schema=NavigationSelection,
+        max_tokens=300,
+        num_ctx=8192,
     )
     selected_ids: list[str] = result.get("selected_ids") or []
     if not selected_ids:
