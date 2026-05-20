@@ -66,9 +66,9 @@ def navigate_level_prompt(query: str, candidates: list[dict], multi_select: bool
         )
 
     return (
-        f"السؤال: {query}\n\n"
         f"الأقسام المتاحة:\n{sections_text}\n\n"
         f"التعليمات: {instruction}"
+        f"السؤال: {query}\n\n"
     )
 
 
@@ -135,11 +135,14 @@ def answer_system() -> str:
 
 
 def answer_prompt(query: str, leaf_metadata: list[dict], leaf_content: str) -> str:
+    breadcrumb = leaf_metadata[0].get("breadcrumb", []) if leaf_metadata else []
+    location = _location_line(breadcrumb)
     sources = "\n".join(
         f"- {m['title']} (صفحات {m['start_page']}–{m['end_page']})"
         for m in leaf_metadata
     )
     return (
+        f"{location}"
         f"النص التنظيمي:\n{leaf_content}\n\n"
         f"المصادر: {sources}\n\n"
         f"السؤال: {query}\n\n"

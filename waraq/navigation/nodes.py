@@ -54,6 +54,14 @@ def _is_leaf(node: dict) -> bool:
     return "start_page" in node and "children" not in node
 
 
+def _get_breadcrumb(sections: list[dict], path_ids: list[str]) -> list[str]:
+    return [
+        node["title"]
+        for pid in path_ids
+        if (node := _find_node(sections, pid)) is not None
+    ]
+
+
 def _get_candidates(index: dict, navigation_path: list[str]) -> list[dict]:
     if not navigation_path:
         return index["sections"]
@@ -63,6 +71,9 @@ def _get_candidates(index: dict, navigation_path: list[str]) -> list[dict]:
     return parent.get("children", [])
 
 
+_ANCHOR_RE = re.compile(r"<a\s+id='[^']*'></a>\n?")
+
+
 def _extract_leaf_content(node: dict, markdown_dir: Path) -> str:
     parts: list[str] = []
     for page_num in range(node["start_page"], node["end_page"] + 1):
@@ -70,7 +81,7 @@ def _extract_leaf_content(node: dict, markdown_dir: Path) -> str:
         if not page_file.exists():
             log.debug("  page file missing: %s", page_file)
             continue
-        text = page_file.read_text(encoding="utf-8").strip()
+        text = _ANCHOR_RE.sub("", page_file.read_text(encoding="utf-8")).strip()
         if text:
             parts.append(text)
     return "\n\n".join(parts)
@@ -183,6 +194,7 @@ def navigate_level(state: NavigationState, config: RunnableConfig) -> dict[str, 
     # Leaf level: collect content from all selected leaves
     all_content: list[str] = []
     all_metadata: list[dict] = []
+    breadcrumb = _get_breadcrumb(index["sections"], navigation_path)
     for sid, node in leaf_nodes:
         content = _extract_leaf_content(node, markdown_dir)
         if content:
@@ -193,6 +205,7 @@ def navigate_level(state: NavigationState, config: RunnableConfig) -> dict[str, 
             "start_page": node["start_page"],
             "end_page": node["end_page"],
             "chunk_ids": node.get("chunk_ids", []),
+            "breadcrumb": breadcrumb + [node["title"]],
         })
 
     if not all_content:
