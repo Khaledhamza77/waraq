@@ -1,7 +1,7 @@
 # waraq
 Navigating Egypt's accounting standards and regulations with surgical precision. No embeddings and no guesswork.
 
-An agentic RAG system for the Egyptian Accounting Standards Manual. Instead of vector search, a LangGraph agent navigates the document's hierarchical index level by level to locate the exact sections relevant to a query, then generates a grounded answer with citations that link back to the source pages.
+An agentic navigation system for the Egyptian Accounting Standards Manual. Instead of vector search, a LangGraph agent navigates the document's hierarchical index level by level to locate the exact sections relevant to a query, then generates a grounded answer with citations that link back to the source pages.
 
 ---
 
